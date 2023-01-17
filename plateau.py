@@ -66,7 +66,7 @@ class Board:
                 score = board.calculposManhattan()
                 nbCoups += test[0]
                 Total = score + nbCoups
-                print("\n Heuristique : ", score, "\n Nb coups joué + malus", nbCoups,
+                print("\n Heuristiqu : ", score, "\n Nb coups joué + malus", nbCoups,
                       "\n Malus du coups :", test[0], "\n Bonus du coups :", test[1],
                       "\n cout Total : ", Total)
                 nbCoups += 1
