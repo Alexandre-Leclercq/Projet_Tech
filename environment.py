@@ -14,17 +14,15 @@ class SimpleMaze:
         self.__row = row
         self.__col = col
         self.__seed: int = seed
-        self.start_point: list[int, int] = [0, 0]
-        self.character_pos: list[int, int] = [0, 0]
-        self.end_point: list[int, int] = [row - 1, col - 1]
+        self.start_point: list[int, int] = [row - 1, 0]
+        self.character_pos: list[int, int] = self.start_point[:]
+        self.end_point: list[int, int] = [0, col - 1]
         self.reset(seed)
 
     def reset(self, seed: Optional[int] = None) -> None:
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
-        self.start_point: list[int, int] = [0 , 0]
-        self.character_pos: list[int, int] = [0, 0]
-        self.end_point = [random.randint(0, self.__row-1), random.randint(0, self.__col-1)]
+        self.character_pos: list[int, int] = self.start_point[:]
 
     def state(self) -> int:
         return (self.__row-1-self.character_pos[0])*self.__col + self.character_pos[1] + 1
@@ -68,6 +66,7 @@ class SimpleMaze:
                     else:
                         print(".", end="")
                 print("|")
+            print("")
         elif mode == "human":
             print("human")
 
