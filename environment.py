@@ -14,23 +14,46 @@ class SimpleMaze:
         self.__row = row
         self.__col = col
         self.__seed: int = seed
-        self.character_pos: list[int, int] = [random.randint(1, self.__row-1), random.randint(1, self.__col-1)]
-        self.end_point: list[int, int] = [random.randint(1, self.__row-1), random.randint(1, self.__col-1)]
+        self.start_point: list[int, int] = [0, 0]
+        self.character_pos: list[int, int] = [0, 0]
+        self.end_point: list[int, int] = [row - 1, col - 1]
         self.reset(seed)
 
     def reset(self, seed: Optional[int] = None) -> None:
         self.__seed = (seed, self.__seed)[seed is None]
-        self.character_pos = [random.randint(1, self.__row-1), random.randint(1, self.__col-1)]
-        self.end_point = [random.randint(1, self.__row-1), random.randint(1, self.__col-1)]
+        random.seed(self.__seed)
+        self.start_point: list[int, int] = [0 , 0]
+        self.character_pos: list[int, int] = [0, 0]
+        self.end_point = [random.randint(0, self.__row-1), random.randint(0, self.__col-1)]
+
+    def state(self) -> int:
+        return (self.__row-1-self.character_pos[0])*self.__col + self.character_pos[1] + 1
+
+    def done(self) -> bool:
+        return self.character_pos == self.end_point
+
+    def reward(self) -> int:
+        if self.character_pos == self.end_point:
+            return 1000
+        else:
+            return -1
+
+    def step(self, a: int):
+        movement = self.action(a)
+        self.character_pos[0] += movement[0]
+        self.character_pos[1] += movement[1]
+        return self.state(), self.reward(), self.done()
 
     """    define the actions doable    """
-    def actions(self):
-        return [[1, 0], [0, 1], [-1, 0], [0, -1]]
-
-    def observation(self):
-        return [
-            self.character_pos
-        ]
+    def action(self, a: int):
+        if a == 1:  # up
+            return [-1, 0]
+        if a == 2:  # right
+            return [0, 1]
+        if a == 3:  # down
+            return [1, 0]
+        if a == 4:  # left
+            return [0, -1]
 
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
@@ -47,10 +70,6 @@ class SimpleMaze:
                 print("|")
         elif mode == "human":
             print("human")
-
-    def step(self):
-        done = self.character_pos == self.end_point
-        return observation, reward, done, info
 
 class Maze:
     def __init__(self, row: int, col: int, seed: int = 0):
