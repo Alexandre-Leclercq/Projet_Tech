@@ -36,10 +36,11 @@ class SimpleMaze:
         else:
             return -1
 
-    def step(self, a: int):
+    def step(self, a: int) -> (int, int, bool):
         movement = self.action(a)
-        self.character_pos[0] += movement[0]
-        self.character_pos[1] += movement[1]
+        if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
+            self.character_pos[0] += movement[0]
+            self.character_pos[1] += movement[1]
         return self.state(), self.reward(), self.done()
 
     """    define the actions doable    """
@@ -211,9 +212,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-#%%
