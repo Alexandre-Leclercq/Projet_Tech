@@ -19,39 +19,37 @@ class SimpleMaze:
         self.end_point: list[int, int] = [0, col - 1]
         self.reset(seed)
 
-    def reset(self, seed: Optional[int] = None) -> None:
+    def reset(self, seed: Optional[int] = None) -> list[int, int]:
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
         self.character_pos: list[int, int] = self.start_point[:]
-
-    def state(self) -> int:
-        return (self.__row-1-self.character_pos[0])*self.__col + self.character_pos[1] + 1
+        return self.character_pos.copy()
 
     def done(self) -> bool:
         return self.character_pos == self.end_point
 
-    def reward(self) -> int:
+    def reward(self) -> float:
         if self.character_pos == self.end_point:
             return 1000
         else:
             return -1
 
-    def step(self, a: int) -> (int, int, bool):
-        movement = self.action(a)
+    def step(self, action: int) -> (list, int, bool):
+        movement = self.action(action)
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
-        return self.state(), self.reward(), self.done()
+        return self.character_pos.copy(), self.reward(), self.done()
 
     """    define the actions doable    """
-    def action(self, a: int):
-        if a == 1:  # up
+    def action(self, a: str):
+        if a == "north":  # up
             return [-1, 0]
-        if a == 2:  # right
+        if a == "east":  # right
             return [0, 1]
-        if a == 3:  # down
+        if a == "south":  # down
             return [1, 0]
-        if a == 4:  # left
+        if a == "west":  # left
             return [0, -1]
 
     def render(self, mode: str = "computed") -> None:
@@ -70,6 +68,7 @@ class SimpleMaze:
             print("")
         elif mode == "human":
             print("human")
+
 
 class Maze:
     def __init__(self, row: int, col: int, seed: int = 0):
@@ -90,7 +89,6 @@ class Maze:
         self.grid[row][col] = False  # we remove the wall from the start point
         self.generation(row, col)  # we recursively generate a maze
         self.end_point = self.list_path[random.randint(0, len(self.list_path)-1)]
-        print(self.__seed)
 
     def generation(self, row: int, col: int) -> None:
         random_directions = [1, 2, 3, 4]

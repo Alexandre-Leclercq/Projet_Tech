@@ -1,72 +1,98 @@
 from environment import SimpleMaze
 
 
-class Agent:
-    def __init__(self, gamma: int, max_iter: int, debug: bool = False):
+class PassiveAgentTD:
+    def __init__(self, env: SimpleMaze, trials: int, gamma: int, debug: bool = False):
         self.__debug: bool = debug
+        self.__env = env
         self.__s = None  # actual state
-        self.__istop = False
-        self.__max_iter = max_iter
+        self.__trials = trials
         self.__gamma = gamma
-        self.__tab_utility: list = []
-        self.__tab_frequency: list = []
+        self.__tab_utilities: list = []
+        self.__Ns: list = []
         self.__tab_visited_state: list = []
 
-    def __alpha(self, n: int) -> float:
-        return 180 / (179 + n)
+    """
+    see p.702 Artificial Intelligence: A modern approach 
+    """
 
-    def __update_utility(self, s_prime, r: int) -> None:  # U[s] + alpha(Ns[s]) (R[s] + γU[s′] − U[s])
+    def __alpha(self, n: int) -> float:
+        return self.__trials / (self.__trials + n)
+
+    def __update_utility(self, s_prime, reward: float) -> None:  # U[s] + alpha(Ns[s]) (R[s] + γU[s′] − U[s])
         if s_prime not in self.__tab_visited_state:
-            self.__tab_utility.append(0)
-            self.__tab_frequency.append(0)
+            self.__tab_utilities.append([0])
+            self.__Ns.append(0)
             self.__tab_visited_state.append(s_prime)
 
         if self.__s is not None:
             index_s = self.__tab_visited_state.index(self.__s)
             index_s_prime = self.__tab_visited_state.index(s_prime)
-            self.__tab_frequency[index_s] = self.__tab_frequency[index_s] + 1
-            self.__tab_utility[index_s] += self.__alpha(self.__tab_frequency[index_s]) *\
-                (r + self.__gamma * self.__tab_utility[index_s_prime] \
-                 - self.__tab_utility[index_s])
+            self.__Ns[index_s] = self.__Ns[index_s] + 1
+            self.__tab_utilities[index_s].append(self.__tab_utilities[index_s][-1] + self.__alpha(self.__Ns[index_s]) *
+                                                 (reward + self.__gamma * self.__tab_utilities[index_s_prime][-1]
+                                                  - self.__tab_utilities[index_s][-1]))
+        if self.__debug:
+            self.__debug_env(s_prime, reward)
+        self.__s = s_prime
 
+    def __policy(self) -> str:
+        if self.__s[0] == 0:
+            return "east"  # right
+        else:
+            return "north"  # up
+
+    """
     def __up_and_right_policy(self):
         if self.__istop:
             return 2  # right
         else:
             return 1  # up
+    """
 
-    def __debug_env(self, env, iteration: int, s_prime=None, r=None, done_stage=None):
-        env.render()
-        print("Iteration : "+str(iteration))
+    def __debug_env(self, s_prime=None, reward=None):
+        self.__env.render()
         print("s: " + str(self.__s))
         print("s_prime: " + str(s_prime))
-        print("reward: " + str(r))
-        print("done: " + str(done_stage))
-        print("U[s] = "+str(self.__tab_utility))
-        print("state[s] = "+str(self.__tab_visited_state))
-        print("N[s] = "+str(self.__tab_frequency))
+        print("reward: " + str(reward))
+        print("U[s] = " + str(self.get_utilities()))
+        print("state[s] = " + str(self.get_visited_state()))
+        print("N[s] = " + str(self.get_Ns()))
         print("\n")
 
-    def up_and_right_learning(self, env):
-        if self.__debug:
-            self.__debug_env(env, -1)
-        for i in range(self.__max_iter):
-            a = self.__up_and_right_policy()
-            s_prime, r, done_stage = env.step(a)
-            if s_prime == self.__s:
-                self.__istop = True
-            self.__update_utility(s_prime, r)
-            self.__s = s_prime
+    def learning(self):
+        current_trials: int = 0
+        s0 = self.__env.reset()
+        self.__update_utility(s0, 0)
 
-            if self.__debug:
-                self.__debug_env(env, i, s_prime, r, done_stage)
+        while current_trials < self.__trials:
+            action = self.__policy()
+            s_prime, reward, done_stage = self.__env.step(action)
+            self.__update_utility(s_prime, reward)
 
             if done_stage:
-                self.__s = None
-                self.__istop = False
-                env.reset()
+                self.__s = self.__env.reset()
                 if self.__debug:
-                    self.__debug_env(env, i, s_prime, r, done_stage)
+                    self.__debug_env()
+                current_trials += 1
+
+    def print_u_table(self):
+        for state in self.get_visited_state():
+            print("{:<10}".format(str(state)), end="")
+        print()
+        for i in range(self.__trials):  # for each trials
+            for j in range(len(self.get_utilities())):  # for state of a trials
+                print("{:<10}".format(str(round(self.__tab_utilities[j][i], 2))), end="")
+            print()
+
+    def get_utilities(self):
+        return self.__tab_utilities[:-1]
+
+    def get_visited_state(self):
+        return self.__tab_visited_state[:-1]
+
+    def get_Ns(self):
+        return self.__Ns[:-1]
 
 
 def main():
