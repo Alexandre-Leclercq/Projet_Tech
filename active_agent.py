@@ -12,48 +12,54 @@ class ActiveAgentTD:
         "south",
         "west"
     )
-    def __init__(self, env: SimpleMaze, trials: int, gamma: int, debug: bool = False):
+    def __init__(self, env: SimpleMaze, trials: int, gamma: int, Nmin: int, debug: bool = False):
         self.__debug: bool = debug
         self.__env = env
         self.__s = None  # actual state
         self.__a = None  # actual state
         self.__r = None  # actual state
+        self.__Nmin= Nmin
         self.__trials = trials
-        self.__Q_table: list = torch.zeros((1,len(self.ACTIONS)))
+        self.__gamma = gamma
+        self.__Q_table = torch.zeros((1,len(self.ACTIONS)))
         # self.__R_table: list =[]
         self.__tab_utilities: list = []
-        self.__Nsa: list = torch.zeros((....))
+        self.__Nsa = torch.zeros((1,len(self.ACTIONS)))
         self.__tab_visited_state: list = []
 
 
     def __alpha(self, n: int) -> float:
         return self.__trials / (self.__trials + n)
 
-    def function_exploration(self, index_s_prime):
-        n = self.__Ns[index_s_prime]
-        Nmin = np.argmin(self.__Ns)
-        Q = self.__Q_table[index_s_prime]
-        Qmin = np.argmin(self.__Q_table)
+    def function_exploration(self,q , n):
 
-        if n <= Nmin:
+        a = self.__a
+        #n = torch.sum(self.__Q_table[:][a],0) # ,0 for sum col
+        Qmin = #valeur a mettre
+
+        if n <= self.__Nmin:
             return Qmin
         else:
-            return Q
+            return q
 
-    def Q_learning_Agent(self, s_prime, reward: float):
+    def Q_learning_Agent(self, s_prime, reward_prime: float): # voir comment on retrouve l'action effectuer dans la qtable
 
         if self.__s is not None:
             index_s = self.__tab_visited_state.index(self.__s)
             index_s_prime = self.__tab_visited_state.index(s_prime)
-            self.__Nsa[index_s, self.__a] = self.__Nsa[index_s, self.__a] + 1
-#vstack en torch
-            self.__Q_table(index_s,self.__a)
-            self.__tab_utilities[index_s].append(
-                self.__tab_utilities[index_s][-1] + self.__alpha(self.__Nsa[index_s, self.__a]) *
-                (reward + self.__gamma * self.__tab_utilities[index_s_prime][-1]
-                 - self.__tab_utilities[index_s][-1]))
+            self.__Nsa[index_s][self.__a] = self.__Nsa[index_s][self.__a] + 1
+            self.__Q_table[index_s][self.__a] =  self.__Q_table[index_s][self.__a] + self.__alpha(self.__Nsa[index_s][self.__a])
+            (self.__r + self.__gamma * max(self.__Q_table[s_prime][:])-self.__Q_table[self.__s][self.__a])
+
+
+        if self.__s not in self.__tab_visited_state:
+            ajout = torch.zeros((1,len(self.ACTIONS)))
+            passe valeur dans ajout
+            vstack entre ancien tab et ajout
 
         self.__s = s_prime
         # self.__R_table[index_s] = reward
-        self.__r = reward
-        return self.function_exploration(index_s_prime)
+        self.__a = max(self.function_exploration(self.__Q_table[s_prime][:],self.__Nsa[s_prime][:]))
+        self.__r = reward_prime
+
+        return self.__a
