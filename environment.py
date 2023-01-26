@@ -23,7 +23,7 @@ class SimpleMaze:
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
         self.character_pos: list[int, int] = self.start_point[:]
-        return self.character_pos.copy()
+        return self.state()
 
     def done(self) -> bool:
         return self.character_pos == self.end_point
@@ -34,6 +34,9 @@ class SimpleMaze:
         else:
             return -1
 
+    def state(self) -> int:
+        return (self.__row-1-self.character_pos[0])*self.__col + self.character_pos[1]
+
     def get_number_state(self):
         return self.__row * self.__col
 
@@ -42,7 +45,7 @@ class SimpleMaze:
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
-        return self.character_pos.copy(), self.reward(), self.done()
+        return self.state(), self.reward(), self.done()
 
     """    define the actions doable    """
     def action(self, a: str):
