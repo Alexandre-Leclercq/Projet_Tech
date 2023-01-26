@@ -54,7 +54,7 @@ class SimpleMaze:
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
             for i in range(self.__row):
-                print(i, end="\t")
+                print("{:<2}".format(str(i)), end=" ")
                 for j in range(self.__col):
                     print("|", end="")
                     if self.character_pos == [i, j]:

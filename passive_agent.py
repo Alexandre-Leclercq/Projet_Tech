@@ -4,10 +4,6 @@ from typing import Optional
 from environment import SimpleMaze
 
 
-def actions():
-    return ["north", "east", "south", "west"]
-
-
 class PassiveAgentTD:
 
     ACTIONS: tuple = (
@@ -40,7 +36,9 @@ class PassiveAgentTD:
     see p.702 Artificial Intelligence: A modern approach 
     """
     def __alpha(self, n: int) -> float:
-        return self.__trials / (self.__trials + n)
+        alpha = (self.__trials/10) / (self.__trials/10 + n)
+        print("alpha : " + str(alpha))
+        return alpha
 
     def __update_utility(self, s_prime, reward: float) -> None:  # U[s] + alpha(Ns[s]) (R[s] + γU[s′] − U[s])
         if s_prime not in self.__tab_visited_state:
@@ -59,8 +57,6 @@ class PassiveAgentTD:
             self.__debug_env(s_prime, reward)
         self.__s = s_prime
 
-
-
     def __policy(self) -> str:
         if self.__s[0] == 0:  # if we have reach the first row (the top)
             return "east"  # right
@@ -74,12 +70,14 @@ class PassiveAgentTD:
         print("random: "+str(rand))
         print("p = "+str(1 - (current_trial/self.__trials) * 0.75))
         if rand < (1 - (current_trial/self.__trials) * 0.75):  # when current_trial --> trials. p --> 0.25
-            return right_policy
+            action = right_policy
         else:
             wrong_action: list = list(self.ACTIONS)
             wrong_action.remove(right_policy)
             wrong_action: str = wrong_action[random.randint(0, len(wrong_action)-1)]
-            return wrong_action
+            action = wrong_action
+        print("selected action: "+str(action)+"\n")
+        return action
 
     def __debug_env(self, s_prime=None, reward=None):
         self.__env.render()
@@ -101,7 +99,7 @@ class PassiveAgentTD:
                 action = self.__random_policy(current_trial)
             else:
                 action = self.__policy()
-            print("action choisi: "+str(action)+"\n")
+
             s_prime, reward, done_stage = self.__env.step(action)
             self.__update_utility(s_prime, reward)
 
@@ -139,3 +137,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#%%
