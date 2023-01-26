@@ -42,6 +42,8 @@ class PassiveAgentTD:
         else:
             return "north"  # up
 
+
+
     """
     def __up_and_right_policy(self):
         if self.__istop:
@@ -75,6 +77,7 @@ class PassiveAgentTD:
                 if self.__debug:
                     self.__debug_env()
                 current_trials += 1
+
 
     def print_u_table(self):
         for state in self.get_visited_state():
