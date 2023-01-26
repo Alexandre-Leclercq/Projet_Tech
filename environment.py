@@ -10,16 +10,24 @@ from typing import Optional
 
 
 class SimpleMaze:
+
+    ACTIONS: dict = {
+        "north": (-1, 0),
+        "east": (0, 1),
+        "south": (1, 0),
+        "west": (0, -1)
+    }
+
     def __init__(self, row: int, col: int, seed: int = 0):
         self.__row = row
         self.__col = col
         self.__seed: int = seed
-        self.start_point: list[int, int] = [row - 1, 0]
-        self.character_pos: list[int, int] = self.start_point[:]
-        self.end_point: list[int, int] = [0, col - 1]
-        self.reset(seed)
+        self.start_point: tuple = [row - 1, 0]
+        self.character_pos: list = self.start_point[:].copy()
+        self.end_point: tuple = [0, col - 1]
+        #  self.reset(seed)
 
-    def reset(self, seed: Optional[int] = None) -> list[int, int]:
+    def reset(self, seed: Optional[int] = None) -> list:
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
         self.character_pos: list[int, int] = self.start_point[:]
@@ -35,22 +43,13 @@ class SimpleMaze:
             return -1
 
     def step(self, action: int) -> (list, int, bool):
-        movement = self.action(action)
+        movement = self.ACTIONS[action]
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
         return self.character_pos.copy(), self.reward(), self.done()
 
     """    define the actions doable    """
-    def action(self, a: str):
-        if a == "north":  # up
-            return [-1, 0]
-        if a == "east":  # right
-            return [0, 1]
-        if a == "south":  # down
-            return [1, 0]
-        if a == "west":  # left
-            return [0, -1]
 
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
@@ -71,6 +70,13 @@ class SimpleMaze:
 
 
 class Maze:
+    ACTIONS: dict = {
+        "north": (-1, 0),
+        "east": (0, 1),
+        "south": (1, 0),
+        "west": (0, -1)
+    }
+
     def __init__(self, row: int, col: int, seed: int = 0):
         self.__row = row
         self.__col = col
@@ -151,38 +157,7 @@ class Maze:
         elif mode == "human":
             print("human")
 
-
-    '''
-    def start(self, board):
-        game: bool = True
-        nb_moves: int = 0
-        test: list = [0, 0]
-        while game:
-            if self.character.position == self.exit:
-                print("fin jeu")
-                board.display()
-                score = board.taxicab_geometry()
-                nb_moves += test[0]
-                total = score + nb_moves
-                print("\n Heuristique : ", score, "\n Nb coups joué + malus", nb_moves,
-                      "\n Malus du coups :", test[0], "\n Bonus du coups :", test[1],
-                      "\n cout Total : ", total)
-                nb_moves += 1
-                game = True
-                break
-           
-            board.display()
-            score = board.taxicab_geometry()
-           
-            total = score + nb_moves + test[0]-test[1]
-            print("\n Score : ", score, "\n Nb moves played ", nb_moves,
-                  "\n Penalty moves :", test[0], "\n Bonus moves :", test[1],
-                  "\n Total cost : ", total)
-            nb_moves += 1
-            test = board.character.ask_move(board)
-            print("\n==================== \n")
-    
-    
+    '''    
     def __reward(self) -> None:
         return None
 
@@ -191,12 +166,6 @@ class Maze:
 
     def step(self) -> None:
         return None
-
-    def render(self, mode: str = "computed") -> None:
-        if(mode="computed")
-            return None
-        if(mode="human")
-            return None
     '''
 
 
@@ -205,8 +174,10 @@ def main():
     board = SimpleMaze(10, 10, 3)
 
     # Affichage du plateau
-    board.render(mode="computed")
+    board.render()
 
 
 if __name__ == '__main__':
     main()
+
+#%%
