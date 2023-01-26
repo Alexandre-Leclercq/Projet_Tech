@@ -34,6 +34,9 @@ class SimpleMaze:
         else:
             return -1
 
+    def get_number_state(self):
+        return self.__row * self.__col
+
     def step(self, action: int) -> (list, int, bool):
         movement = self.action(action)
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
