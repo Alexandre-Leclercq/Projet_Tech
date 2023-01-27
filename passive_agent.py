@@ -109,6 +109,7 @@ class PassiveAgentTD:
                     self.__debug_env()
                 current_trial += 1
 
+
     def print_u_table(self):
         for state in self.get_visited_state():
             print("{:<10}".format(str(state)), end="")
