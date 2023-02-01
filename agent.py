@@ -189,8 +189,7 @@ class ActiveAgentQLearning:
             self.__Nsa[self.__s][self.__a] = self.__Nsa[self.__s][self.__a] + 1
             self.__Q_table[self.__s][self.__a] = self.__Q_table[self.__s][self.__a] + \
                                                  self.__alpha(self.__Nsa[self.__s][self.__a]) * \
-                                                 (self.__r + self.__gamma *
-                                                  (self.__Q_table[s_prime][a_prime]-self.__Q_table[self.__s][self.__a]))
+                                                 (self.__r + self.__gamma * self.__Q_table[s_prime][a_prime]-self.__Q_table[self.__s][self.__a])
 
         self.__s = s_prime
         self.__a = torch.argmax(self.function_exploration(self.__Q_table[s_prime], self.__Nsa[s_prime]))
