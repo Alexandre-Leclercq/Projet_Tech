@@ -35,9 +35,7 @@ class PassiveAgentTD:
     see p.702 Artificial Intelligence: A modern approach 
     """
     def __alpha(self, n: int) -> float:
-        alpha = (self.__trials/10) / (self.__trials/10 + n)
-        print("alpha : " + str(alpha))
-        return alpha
+        return (self.__trials/10) / (self.__trials/10 + n)
 
     def __update_utility(self, s_prime, reward: float) -> None:  # U[s] + alpha(Ns[s]) (R[s] + γU[s′] − U[s])
         if s_prime not in self.__tab_visited_state:
@@ -65,9 +63,6 @@ class PassiveAgentTD:
     def __random_policy(self, current_trial: int):
         rand = random.uniform(0, 1)
         right_policy = self.__policy()
-        print("right policy: " + right_policy)
-        print("random: "+str(rand))
-        print("p = "+str(1 - (current_trial/self.__trials) * 0.75))
         if rand < (1 - (current_trial/self.__trials) * 0.75):  # when current_trial --> trials. p --> 0.25
             action = right_policy
         else:
@@ -75,7 +70,6 @@ class PassiveAgentTD:
             wrong_action.remove(right_policy)
             wrong_action: str = wrong_action[random.randint(0, len(wrong_action)-1)]
             action = wrong_action
-        print("selected action: "+str(action)+"\n")
         return action
 
     def __debug_env(self, s_prime=None, reward=None):
@@ -107,6 +101,7 @@ class PassiveAgentTD:
                 if self.__debug:
                     self.__debug_env()
                 current_trial += 1
+        print("learning completed")
 
     def print_u_table(self):
         for state in self.get_visited_state():
@@ -179,13 +174,10 @@ class ActiveAgentQLearning:
 
     def q_learning_agent(self, s_prime, reward_prime: float, done: bool):
         if done:  # s_prime is a final state
-            print("r_f: "+str(reward_prime))
             self.__Q_table[s_prime] = torch.full_like(self.__Q_table[s_prime], reward_prime)
 
         a_prime = torch.argmax(self.__Q_table[s_prime])
         if self.__s is not None:
-            print("s_prime: "+str(s_prime))
-            print("r: "+str(reward_prime))
             self.__Nsa[self.__s][self.__a] = self.__Nsa[self.__s][self.__a] + 1
             self.__Q_table[self.__s][self.__a] = self.__Q_table[self.__s][self.__a] + \
                                                  self.__alpha(self.__Nsa[self.__s][self.__a]) * \
@@ -199,7 +191,7 @@ class ActiveAgentQLearning:
 
     def learning(self):
         current_trials: int = 0
-        s0 = self.__env.reset()
+        self.__env.reset()
         s0 = self.__env.state()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while current_trials < self.__trials:
@@ -210,12 +202,12 @@ class ActiveAgentQLearning:
                 self.__debug_env()
 
             if done_stage:
-                print(current_trials)
                 self.__s = None
-                s0 = self.__env.reset()
+                self.__env.reset()
                 s0 = self.__env.state()
                 action = self.q_learning_agent(s0, self.__env.reward(), False)
                 current_trials += 1
+        print("learning completed")
 
 
 def main():
