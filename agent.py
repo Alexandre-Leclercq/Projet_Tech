@@ -66,7 +66,7 @@ class PassiveAgentTD:
         if rand < (1 - (current_trial/self.__trials) * 0.75):  # when current_trial --> trials. p --> 0.25
             action = right_policy
         else:
-            wrong_action: list = list(self.ACTIONS)
+            wrong_action: list = self.__env.actions()
             wrong_action.remove(right_policy)
             wrong_action: str = wrong_action[random.randint(0, len(wrong_action)-1)]
             action = wrong_action
@@ -144,9 +144,9 @@ class ActiveAgentQLearning:
         self.__q_min = q_min
         self.__trials = trials
         self.__gamma = gamma
-        self.__Q_table = torch.zeros((self.__env.get_number_state(), len(self.ACTIONS)), dtype=torch.float)
+        self.__Q_table = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.float)
         self.__tab_utilities: list = []
-        self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.ACTIONS)), dtype=torch.int)
+        self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
         self.__tab_visited_state: list = []
 
     def __alpha(self, n: int) -> float:
@@ -187,7 +187,7 @@ class ActiveAgentQLearning:
         self.__a = torch.argmax(self.function_exploration(self.__Q_table[s_prime], self.__Nsa[s_prime]))
         self.__r = reward_prime
 
-        return self.ACTIONS[self.__a]
+        return self.__env.actions()[self.__a]
 
     def learning(self):
         current_trials: int = 0
@@ -205,6 +205,95 @@ class ActiveAgentQLearning:
                 self.__s = None
                 self.__env.reset()
                 s0 = self.__env.state()
+                action = self.q_learning_agent(s0, self.__env.reward(), False)
+                current_trials += 1
+        print("learning completed")
+
+
+class ActiveAgentRegressionLearning:
+
+    ACTIONS: tuple = (
+        "north",
+        "east",
+        "south",
+        "west"
+    )
+
+    def __init__(self, env: SimpleMaze, trials: int, gamma: int, n_min: int, q_min:int, debug: bool = False):
+        self.__debug: bool = debug
+        self.__env = env
+        self.__s = None
+        self.__a = None
+        self.__r = None
+        self.__n_min = n_min
+        self.__q_min = q_min
+        self.__trials = trials
+        self.__gamma = gamma
+        self.__beta = torch.rand((len(self.__env.actions()), self.__env.get_state_dim()+1),)*1000  # we generate random beta between 0 and 1000 (max reward)
+        self.__tab_utilities: list = []
+        self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
+        self.__tab_visited_state: list = []
+
+    def __alpha(self, n: int) -> float:
+        return (self.__trials/10) / (self.__trials/10 + n)
+
+    def function_exploration(self, q, n: int):
+        tmp = torch.zeros(len(q))
+        for i in torch.arange(len(q)):
+            if n[i] <= self.__n_min:
+                tmp[i] = self.__q_min
+            else:
+                tmp[i] = q[i]
+        return tmp
+
+    def __debug_env(self):
+        self.__env.render()
+
+    def get_utilities(self):
+        number_states = self.__env.get_number_state()
+        u = torch.zeros(number_states, dtype=torch.float)
+        for i in range(number_states):
+            u[i] = torch.max(self.__q_b(i))
+        return u
+
+    def q_b(self, s, a=None):
+        if a is None:
+            result = torch.zeros(len(self.__env.actions()))
+            for i in torch.arange(len(self.__env.actions())):
+                result[i] = self.q_b(s, i)
+            return result
+        else:
+            return torch.matmul(torch.hstack((torch.tensor(1), s)), self.__beta[a])
+
+    def q_learning_agent(self, s_prime, reward_prime: float, done: bool):
+
+        a_prime = torch.argmax(self.q_b(s_prime))
+        if self.__s is not None:
+            self.__Nsa[self.__env.convert_state_to_number(self.__s)][self.__a] += 1
+            self.__beta[self.__a] += self.__alpha(self.__Nsa[self.__env.convert_state_to_number(self.__s)][self.__a]) * \
+                                     (self.__r + self.__gamma * self.q_b(s_prime, a_prime) - self.q_b(self.__s, self.__a)) \
+                                     * torch.hstack((torch.tensor(1), self.__s))
+
+        self.__s = s_prime
+        self.__a = torch.argmax(self.function_exploration(self.q_b(s_prime), self.__Nsa[self.__env.convert_state_to_number(s_prime)]))
+        self.__r = reward_prime
+
+        return self.__env.actions()[self.__a]
+
+    def learning(self):
+        current_trials: int = 0
+        s0 = torch.tensor(self.__env.reset(), dtype=torch.float)
+        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        while current_trials < self.__trials:
+            s_prime, reward, done_stage = self.__env.step(action)
+            s_prime = torch.tensor(s_prime, dtype=torch.float)
+            action = self.q_learning_agent(s_prime, reward, done_stage)
+            if self.__debug:
+                self.__debug_env()
+
+            if done_stage:
+                self.__s = None
+                s0 = torch.tensor(self.__env.reset(), dtype=torch.float)
                 action = self.q_learning_agent(s0, self.__env.reward(), False)
                 current_trials += 1
         print("learning completed")

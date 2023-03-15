@@ -40,6 +40,10 @@ class Environment(ABC):
     def reward(self):
         pass
 
+    @abstractmethod
+    def actions(self):
+        pass
+
 
 class SimpleMaze(Environment):
 
@@ -54,15 +58,17 @@ class SimpleMaze(Environment):
         self.__row = row
         self.__col = col
         self.__seed: int = seed
-        self.start_point: tuple = [row - 1, 0]
-        self.character_pos: list = self.start_point[:].copy()
+        self.character_pos: list = [row - 1, 0]
         self.end_point: tuple = [0, col - 1]
         #  self.reset(seed)
+
+    def actions(self) -> list:
+        return list(self.ACTIONS.keys())
 
     def reset(self, seed: Optional[int] = None) -> list:
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
-        self.character_pos: list[int, int] = self.start_point[:]
+        self.character_pos: list = [self.__row - 1, 0]
         return self.character_pos.copy()
 
     def done(self) -> bool:
@@ -78,7 +84,7 @@ class SimpleMaze(Environment):
     return the state as a unique integer
     """
     def state(self) -> int:
-        return self.character_pos[0]*self.__col + self.character_pos[1]
+        return self.character_pos.copy()
 
     def get_number_state(self):
         return self.__row * self.__col
@@ -88,13 +94,13 @@ class SimpleMaze(Environment):
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
-        return self.character_pos.copy(), self.reward(), self.done()
+        return self.state(), self.reward(), self.done()
 
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
-            for i in range(self.__row):
+            for i in torch.arange(self.__row):
                 print("{:<2}".format(str(i)), end=" ")
-                for j in range(self.__col):
+                for j in torch.arange(self.__col):
                     print("|", end="")
                     if self.character_pos == [i, j]:
                         print("C", end="")
@@ -121,20 +127,21 @@ class Maze(Environment):  # Maze environment base on the depth first search algo
         self.__row = row
         self.__col = col
         self.__seed: int = seed
-        self.grid: torch.BoolTensor = torch.ones((row, col), dtype=bool)  # True for a wall and False for a path
-        self.list_path: list = []
-        self.start_point: list[int, int] = []
-        self.end_point: list[int, int] = []
+        self.paths: list = []
+        self.character_pos: list = []
+        self.end_point: list = []
         self.reset(seed)
 
     def reset(self, seed: Optional[int] = None) -> None:
         self.__seed = (seed, self.__seed)[seed is None]
-        self.grid: torch.Tensor = torch.ones((self.__row, self.__col,))  # we first generate a grid full of wall
         row, col = random.randint(1, self.__row-1), random.randint(1, self.__col-1)
-        self.start_point = [row, col]
-        self.grid[row][col] = False  # we remove the wall from the start point
+        self.character_pos = [row, col]  # we set the character at a random starting point
+        self.paths = [self.character_pos[:]]  # we set the starting point as an empty cell
         self.generation(row, col)  # we recursively generate a maze
-        self.end_point = self.list_path[random.randint(0, len(self.list_path)-1)]
+        self.end_point = self.paths[random.randint(0, len(self.list_path)-1)].copy()  # we take a random empty cell set it as the end point
+
+    def actions(self) -> list:
+        return list(self.ACTIONS.keys())
 
     def generation(self, row: int, col: int) -> None:
         random_directions = [1, 2, 3, 4]
@@ -143,49 +150,44 @@ class Maze(Environment):  # Maze environment base on the depth first search algo
             if random_direction == 1:  # up
                 if row - 2 <= 0:
                     continue
-                if self.grid[row - 1][col] == 1 and self.grid[row - 2][col] == 1:
-                    self.grid[row - 1][col] = 0
-                    self.grid[row - 2][col] = 0
-                    self.list_path.append([row - 1, col])
-                    self.list_path.append([row - 2, col])
+                if [row - 1, col] not in self.paths and [row - 2, col] not in self.paths:
+                    self.paths.append([row - 1, col])
+                    self.paths.append([row - 2, col])
                     self.generation(row - 2, col)
                 continue
             if random_direction == 2:  # down
                 if row + 2 >= self.__row - 1:
                     continue
-                if self.grid[row + 1][col] == 1 and self.grid[row + 2][col] == 1:
-                    self.grid[row + 1][col] = 0
-                    self.grid[row + 2][col] = 0
-                    self.list_path.append([row + 1, col])
-                    self.list_path.append([row + 2, col])
+                if [row + 1, col] not in self.paths and [row + 2, col] not in self.paths:
+                    self.paths.append([row + 1, col])
+                    self.paths.append([row + 2, col])
                     self.generation(row + 2, col)
                 continue
             if random_direction == 3:  # left
                 if col - 2 <= 0:
                     continue
-                if self.grid[row][col - 1] == 1 and self.grid[row][col - 2] == 1:
-                    self.grid[row][col - 1] = 0
-                    self.grid[row][col - 2] = 0
-                    self.list_path.append([row, col - 1])
-                    self.list_path.append([row, col - 2])
+                if [row, col - 1] not in self.paths and [row, col - 2] not in self.paths:
+                    self.paths.append([row, col - 1])
+                    self.paths.append([row, col - 2])
                     self.generation(row, col - 2)
                 continue
             if random_direction == 4:  # right
                 if col + 2 >= self.__col - 1:
                     continue
-                if self.grid[row][col + 1] == 1 and self.grid[row][col + 2] == 1:
-                    self.grid[row][col + 1] = 0
-                    self.grid[row][col + 2] = 0
-                    self.list_path.append([row, col + 2])
-                    self.list_path.append([row, col + 2])
+                if [row, col + 1] not in self.paths and [row, col + 2] not in self.paths:
+                    self.paths.append([row, col + 1])
+                    self.paths.append([row, col + 2])
                     self.generation(row, col + 2)
         self.end_point = [row, col]
 
+    def get_number_state(self):
+        return self.__row * self.__col
+
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
-            for i in range(self.__row):
-                for j in range(self.__col):
-                    if self.start_point == [i, j]:
+            for i in torch.arange(self.__row):
+                for j in torch.arange(self.__col):
+                    if self.character_pos == [i, j]:
                         print("S", end="")
                     elif self.end_point == [i, j]:
                         print("E", end="")
