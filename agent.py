@@ -14,7 +14,6 @@ class PassiveAgentTD:
 
     def __init__(
             self, env: SimpleMaze,
-            trials: int,
             gamma: int,
             seed: Optional[int] = 0,
             random_policy: bool = False,
@@ -24,7 +23,7 @@ class PassiveAgentTD:
         self.__randomPolicy: bool = random_policy
         self.__env = env
         self.__s = None  # actual state
-        self.__trials = trials
+        self.__trials = 0
         self.__gamma = gamma
         self.__tab_utilities: list = []
         self.__Ns: list = []
@@ -82,8 +81,17 @@ class PassiveAgentTD:
         print("N[s] = " + str(self.get_ns()))
         print("\n")
 
-    def learning(self):
+    def __reset(self, trials: int):
+        self.__trials = trials
+        self.__tab_utilities: list = []
+        self.__Ns: list = []
+        self.__tab_visited_state: list = []
+        self.__s = None
+
+    def learning(self, trials: int):
+        self.__reset(trials)
         current_trial: int = 0
+
         s0 = self.__env.reset()
         self.__update_utility(s0, 0)  # we add the utility of the s0 state
 
@@ -134,7 +142,7 @@ class ActiveAgentQLearning:
         "west"
     )
 
-    def __init__(self, env: SimpleMaze, trials: int, gamma: int, n_min: int, q_min:int, debug: bool = False):
+    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min:int, debug: bool = False):
         self.__debug: bool = debug
         self.__env = env
         self.__s = None  # actual state
@@ -142,11 +150,11 @@ class ActiveAgentQLearning:
         self.__r = None
         self.__n_min = n_min
         self.__q_min = q_min
-        self.__trials = trials
+        self.__trials = 0
         self.__gamma = gamma
-        self.__Q_table = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.float)
+        self.__Q_table = torch.tensor([], dtype=torch.float)
         self.__state_index: list = []
-        self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
+        self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def __alpha(self, n: int) -> float:
         alpha = (self.__trials/10) / (self.__trials/10 + n)
@@ -172,8 +180,10 @@ class ActiveAgentQLearning:
         return u
 
     def q_learning_agent(self, s_prime, reward_prime: float, done: bool):
-        if s_prime not in self.__state_index: # keep in memory the index associate to the state s_prime
+        if s_prime not in self.__state_index:  # keep in memory the index associate to the state s_prime
             self.__state_index.append(s_prime)
+            self.__Q_table = torch.cat((self.__Q_table, torch.zeros((1, len(self.__env.actions())))), 0)  # we add the row for Q[s']
+            self.__Nsa = torch.cat((self.__Nsa, torch.zeros((1, len(self.__env.actions())))), 0)  # we add the row for Nsa[s']
 
         s_prime_index = self.__state_index.index(s_prime)
 
@@ -194,8 +204,18 @@ class ActiveAgentQLearning:
 
         return self.__env.actions()[self.__a]
 
-    def learning(self):
+    def __reset(self, trials: int):
+        self.__trials = trials
+        self.__s = None  # actual state
+        self.__a = None
+        self.__r = None
+        self.__Q_table = torch.tensor([], dtype=torch.float)
+        self.__state_index: list = []
+        self.__Nsa = torch.tensor([], dtype=torch.int)
+
+    def learning(self, trials: int):
         current_trials: int = 0
+        self.__reset(trials)
         self.__env.reset()
         s0 = self.__env.state()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
@@ -224,7 +244,7 @@ class ActiveAgentRegressionLearning:
         "west"
     )
 
-    def __init__(self, env: SimpleMaze, trials: int, gamma: int, n_min: int, q_min:int, debug: bool = False):
+    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min:int, debug: bool = False):
         self.__debug: bool = debug
         self.__env = env
         self.__s = None
@@ -232,7 +252,7 @@ class ActiveAgentRegressionLearning:
         self.__r = None
         self.__n_min = n_min
         self.__q_min = q_min
-        self.__trials = trials
+        self.__trials = 0
         self.__gamma = gamma
         self.__beta = torch.rand((len(self.__env.actions()), self.__env.get_state_dim()+1),)*1000  # we generate random beta between 0 and 1000 (max reward)
         self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
@@ -282,9 +302,20 @@ class ActiveAgentRegressionLearning:
 
         return self.__env.actions()[self.__a]
 
-    def learning(self):
-        current_trials: int = 0
+    def __reset(self, trials: int):
+        self.__trials = trials
+
+    def learning(self, trials: int, dim_state_env: int):
+        current_trials: int = trials
         s0 = torch.tensor(self.__env.reset(), dtype=torch.float)
+        self.__beta
+        self.__s = None
+        self.__a = None
+        self.__r = None
+        self.__beta = torch.rand((len(self.__env.actions()), dim_state_env+1),)*1000  # we generate random beta between 0 and 1000 (max reward)
+        self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
+
+
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)

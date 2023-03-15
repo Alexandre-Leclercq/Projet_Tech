@@ -138,7 +138,7 @@ class Maze(Environment):  # Maze environment base on the depth first search algo
         self.character_pos = [row, col]  # we set the character at a random starting point
         self.paths = [self.character_pos[:]]  # we set the starting point as an empty cell
         self.generation(row, col)  # we recursively generate a maze
-        self.end_point = self.paths[random.randint(0, len(self.list_path)-1)].copy()  # we take a random empty cell set it as the end point
+        self.end_point = self.paths[random.randint(0, len(self.paths)-1)].copy()  # we take a random empty cell set it as the end point
 
     def actions(self) -> list:
         return list(self.ACTIONS.keys())
@@ -191,10 +191,11 @@ class Maze(Environment):  # Maze environment base on the depth first search algo
                         print("S", end="")
                     elif self.end_point == [i, j]:
                         print("E", end="")
-                    elif self.grid[i][j] == 1:
-                        print("#", end="")
-                    elif self.grid[i][j] == 0:
+                    elif [i, j] in self.paths:
                         print(".", end="")
+                    else:
+                        print("#", end="")
+
                 print()
         elif mode == "human":
             print("human")
