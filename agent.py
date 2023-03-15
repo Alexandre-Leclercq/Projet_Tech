@@ -145,15 +145,14 @@ class ActiveAgentQLearning:
         self.__trials = trials
         self.__gamma = gamma
         self.__Q_table = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.float)
-        self.__tab_utilities: list = []
+        self.__state_index: list = []
         self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
-        self.__tab_visited_state: list = []
 
     def __alpha(self, n: int) -> float:
         alpha = (self.__trials/10) / (self.__trials/10 + n)
         return alpha
 
-    def function_exploration(self, q, n: int):
+    def function_exploration(self, q, n: torch.tensor):
         tmp = torch.zeros(len(q))
         for i in range(len(q)):
             if n[i] <= self.__n_min:
@@ -173,18 +172,24 @@ class ActiveAgentQLearning:
         return u
 
     def q_learning_agent(self, s_prime, reward_prime: float, done: bool):
-        if done:  # s_prime is a final state
-            self.__Q_table[s_prime] = torch.full_like(self.__Q_table[s_prime], reward_prime)
+        if s_prime not in self.__state_index: # keep in memory the index associate to the state s_prime
+            self.__state_index.append(s_prime)
 
-        a_prime = torch.argmax(self.__Q_table[s_prime])
+        s_prime_index = self.__state_index.index(s_prime)
+
+        if done:  # s_prime is a final state
+            self.__Q_table[s_prime_index] = torch.full_like(self.__Q_table[s_prime_index], reward_prime)
+
+        a_prime = torch.argmax(self.__Q_table[s_prime_index])
         if self.__s is not None:
-            self.__Nsa[self.__s][self.__a] = self.__Nsa[self.__s][self.__a] + 1
-            self.__Q_table[self.__s][self.__a] = self.__Q_table[self.__s][self.__a] + \
-                                                 self.__alpha(self.__Nsa[self.__s][self.__a]) * \
-                                                 (self.__r + self.__gamma * self.__Q_table[s_prime][a_prime]-self.__Q_table[self.__s][self.__a])
+            s_index = self.__state_index.index(self.__s)
+            self.__Nsa[s_index][self.__a] = self.__Nsa[s_index][self.__a] + 1
+            self.__Q_table[s_index][self.__a] = self.__Q_table[s_index][self.__a] + \
+                                                 self.__alpha(self.__Nsa[s_index][self.__a]) * \
+                                                 (self.__r + self.__gamma * self.__Q_table[s_prime_index][a_prime]-self.__Q_table[s_index][self.__a])
 
         self.__s = s_prime
-        self.__a = torch.argmax(self.function_exploration(self.__Q_table[s_prime], self.__Nsa[s_prime]))
+        self.__a = torch.argmax(self.function_exploration(self.__Q_table[s_prime_index], self.__Nsa[s_prime_index]))
         self.__r = reward_prime
 
         return self.__env.actions()[self.__a]
@@ -230,9 +235,7 @@ class ActiveAgentRegressionLearning:
         self.__trials = trials
         self.__gamma = gamma
         self.__beta = torch.rand((len(self.__env.actions()), self.__env.get_state_dim()+1),)*1000  # we generate random beta between 0 and 1000 (max reward)
-        self.__tab_utilities: list = []
         self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
-        self.__tab_visited_state: list = []
 
     def __alpha(self, n: int) -> float:
         return (self.__trials/10) / (self.__trials/10 + n)
@@ -266,7 +269,6 @@ class ActiveAgentRegressionLearning:
             return torch.matmul(torch.hstack((torch.tensor(1), s)), self.__beta[a])
 
     def q_learning_agent(self, s_prime, reward_prime: float, done: bool):
-
         a_prime = torch.argmax(self.q_b(s_prime))
         if self.__s is not None:
             self.__Nsa[self.__env.convert_state_to_number(self.__s)][self.__a] += 1
