@@ -6,12 +6,48 @@ Created on Wed Dec 21 10:45:30 2022
 """
 import random
 import torch
+from abc import ABC, abstractmethod
 from typing import Optional
 
 
-class SimpleMaze:
+class Environment(ABC):
 
-    ACTIONS: dict = {
+    """
+    reset the environment
+    """
+    @abstractmethod
+    def reset(self):
+        pass
+
+    """
+    execute one transition in the environment with the action given
+    """
+    @abstractmethod
+    def step(self, action):
+        pass
+
+    """
+    return the current state
+    """
+    @abstractmethod
+    def state(self):
+        pass
+
+    """
+    return the reward for the current state of the environment
+    """
+    @abstractmethod
+    def reward(self):
+        pass
+
+    @abstractmethod
+    def actions(self):
+        pass
+
+
+class SimpleMaze(Environment):
+
+    ACTIONS: dict = {  # we define the different actions doable
         "north": (-1, 0),
         "east": (0, 1),
         "south": (1, 0),
@@ -26,10 +62,13 @@ class SimpleMaze:
         self.end_point: tuple = [0, col - 1]
         #  self.reset(seed)
 
+    def actions(self) -> list:
+        return list(self.ACTIONS.keys())
+
     def reset(self, seed: Optional[int] = None) -> list:
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
-        self.character_pos: list[int, int] = [self.__row - 1, 0]
+        self.character_pos: list = [self.__row - 1, 0]
         return self.character_pos.copy()
 
     def done(self) -> bool:
@@ -41,14 +80,21 @@ class SimpleMaze:
         else:
             return -1
 
+    """
+    return the state as a unique integer
+    """
+    def state(self) -> int:
+        return self.character_pos.copy()
+
+    def get_number_state(self):
+        return self.__row * self.__col
+
     def step(self, action: int) -> (list, int, bool):
         movement = self.ACTIONS[action]
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
         return self.state(), self.reward(), self.done()
-
-    """    define the actions doable    """
 
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
@@ -64,11 +110,12 @@ class SimpleMaze:
                         print(".", end="")
                 print("|")
             print("")
-        elif mode == "human":
+        elif mode == "human":  # futur gui render mode
             print("human")
 
 
-class Maze:
+class Maze(Environment):  # Maze environment base on the depth first search algorithm
+
     ACTIONS: dict = {
         "north": (-1, 0),
         "east": (0, 1),
@@ -88,10 +135,13 @@ class Maze:
     def reset(self, seed: Optional[int] = None) -> None:
         self.__seed = (seed, self.__seed)[seed is None]
         row, col = random.randint(1, self.__row-1), random.randint(1, self.__col-1)
-        self.character_pos = [row, col]
-        self.paths = [[row, col]]
+        self.character_pos = [row, col]  # we set the character at a random starting point
+        self.paths = [self.character_pos[:]]  # we set the starting point as an empty cell
         self.generation(row, col)  # we recursively generate a maze
-        self.end_point = self.paths[random.randint(0, len(self.paths)-1)].copy()
+        self.end_point = self.paths[random.randint(0, len(self.list_path)-1)].copy()  # we take a random empty cell set it as the end point
+
+    def actions(self) -> list:
+        return list(self.ACTIONS.keys())
 
     def generation(self, row: int, col: int) -> None:
         random_directions = [1, 2, 3, 4]
@@ -141,24 +191,25 @@ class Maze:
                         print("S", end="")
                     elif self.end_point == [i, j]:
                         print("E", end="")
-                    elif [i, j] in self.paths:
-                        print(".", end="")
-                    else:
+                    elif self.grid[i][j] == 1:
                         print("#", end="")
+                    elif self.grid[i][j] == 0:
+                        print(".", end="")
                 print()
         elif mode == "human":
             print("human")
 
-    '''    
-    def __reward(self) -> None:
-        return None
+    def step(self, action):
+        """ needs to be implemented """
+        pass
 
-    def __observation(self) -> None:
-        return None
+    def state(self):
+        """ needs to be implemented """
+        pass
 
-    def step(self) -> None:
-        return None
-    '''
+    def reward(self):
+        """ needs to be implemented """
+        pass
 
 
 def main():
