@@ -387,7 +387,7 @@ class SimpleMazeObstacle(Environment):
                 for j in torch.arange(self.__col):
                     print("|", end="")
                     if self.character_pos == [i, j]:
-                        print("C", end="")
+                        print("A", end="")
                     elif self.end_point == [i, j]:
                         print("E", end="")
                     elif self.grid[i][j] == self.CELLS_TYPE["spikes"]:
@@ -395,7 +395,7 @@ class SimpleMazeObstacle(Environment):
                     elif self.grid[i][j] == self.CELLS_TYPE["wall"]:
                         print("#", end="")
                     elif self.grid[i][j] == self.CELLS_TYPE["coin"]:
-                        print("R", end="")
+                        print("C", end="")
                     elif self.grid[i][j] == self.CELLS_TYPE["empty"]:
                         print(".", end="")
                 print("|")
