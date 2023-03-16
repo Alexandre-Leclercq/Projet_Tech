@@ -7,6 +7,7 @@ Created on Wed Dec 21 10:45:30 2022
 """
 import random
 import torch
+from canvasInterface import CanvasInterface
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -119,7 +120,7 @@ class SimpleMaze(Environment):
             print("human")
 
 
-class Maze(Environment):  # Maze environment base on the depth first search algorithm
+class OldMaze(Environment):  # Maze environment base on the depth first search algorithm
 
     ACTIONS: dict = {
         "north": (-1, 0),
@@ -234,7 +235,7 @@ if __name__ == '__main__':
     main()
 
 #%%
-class SimpleMazeObstacle(Environment):
+class Maze(Environment):
 
     ACTIONS: dict = {  # we define the different actions doable
         "north": (-1, 0),
@@ -265,7 +266,8 @@ class SimpleMazeObstacle(Environment):
         self.end_point: tuple = []
         self.ratio_obstacles = ratio_obstacles
         self.grid = torch.tensor([])
-        #  self.reset(seed)
+        self.canvasInterface = CanvasInterface()
+        self.reset(seed)
 
     def actions(self) -> list:
         return list(self.ACTIONS.keys())
@@ -382,7 +384,9 @@ class SimpleMazeObstacle(Environment):
 
     def step(self, action: int) -> (list, int, bool):
         movement = self.ACTIONS[action]
-        if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
+        if self.__row > self.character_pos[0] + movement[0] >= 0 and \
+                self.__col > self.character_pos[1] + movement[1] >= 0 and\
+                self.grid[self.character_pos[0]+movement[0], self.character_pos[1]+movement[1]] != self.CELLS_TYPE['wall']:
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
         return self.state(), self.reward(), self.done()
@@ -407,8 +411,9 @@ class SimpleMazeObstacle(Environment):
                         print(".", end="")
                 print("|")
             print("")
-        elif mode == "human":  # futur gui render mode
-            print("human")
+        elif mode == "gui":  # futur gui render mode
+            self.canvasInterface.draw(self.grid, self.CELLS_TYPE, cell_size=96, end_pos=self.end_point, character_pos=self.character_pos)
+
 
 
 #%%

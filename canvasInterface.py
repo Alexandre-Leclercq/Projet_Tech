@@ -28,24 +28,15 @@ coin_sprite = Image.from_file("Assets/coin.png")
 
 class CanvasInterface:
 
-    def __init__(self, grid: list, cell_types: dict, cell_size: int, end_pos: list, character_pos: list):
-        self.__grid: list = grid
-        self.__row: int = len(grid)
-        self.__col: int = len(grid[0])
-        self.__cs: int = cell_size
-        self.__cell_types: dict = cell_types
-        self.__character_pos: list = character_pos
-        self.__end_pos: list = end_pos
-        self.__canvas: Canvas = Canvas(width=self.__col * self.__cs, height=self.__row * self.__cs)
-
-    def initialize_canvas(self):
-        for i in range(self.__row):
-            for j in range(self.__col):
-                self.draw_cell(i, j)
-        self.draw_end_cell()
-        self.__canvas.draw_image(character_sprite, self.__character_pos[1] * self.__cs,
-                                 self.__character_pos[0] * self.__cs, self.__cs, self.__cs)
-        self.print_canvas()
+    def __init__(self):
+        self.__grid: list = []
+        self.__row: int = 0
+        self.__col: int = 0
+        self.__cs: int = 0
+        self.__cell_types: dict = {}
+        self.__character_pos: list = []
+        self.__end_pos: list = []
+        self.__canvas: Canvas = None
 
     def print_canvas(self):
         display(self.__canvas)
@@ -73,20 +64,37 @@ class CanvasInterface:
                                      self.__cs)
         self.__canvas.stroke_rect(j * self.__cs, i * self.__cs, self.__cs, self.__cs)
 
-    def draw_canvas(self, new_pos: list, grid: list):
-        self.__grid = grid
-        self.clear_canvas()
+
+
+
+
+    def draw(self, grid: list, cell_types: dict, cell_size: int, end_pos: list, character_pos: list):
+        self.__grid: list = grid
+        self.__row: int = len(grid)
+        self.__col: int = len(grid[0])
+        self.__cs: int = cell_size
+        self.__cell_types: dict = cell_types
+        self.__character_pos: list = character_pos
+        self.__end_pos: list = end_pos
+        self.__canvas: Canvas = Canvas(width=self.__col * self.__cs, height=self.__row * self.__cs)
+        self.draw_canvas()
+
+
+
+    def draw_canvas(self):
+        #self.clear_canvas()
         for i in range(self.__row):
             for j in range(self.__col):
                 self.draw_cell(i, j)
         self.draw_end_cell()
-        self.animation(new_pos[0], new_pos[1])
-        self.draw_character(new_pos)
+        #self.animation(new_pos[0], new_pos[1])
+        self.draw_character()
+        self.print_canvas()
 
-    def draw_character(self, new_pos: list):
-        self.__canvas.draw_image(character_sprite, new_pos[1] * self.__cs, new_pos[0] * self.__cs, self.__cs, self.__cs)
-        self.__canvas.stroke_rect(new_pos[1] * self.__cs, new_pos[0] * self.__cs, self.__cs, self.__cs)
-        self.__character_pos = [new_pos[0], new_pos[1]]
+    def draw_character(self):
+        self.__canvas.draw_image(character_sprite, self.__character_pos[1] * self.__cs, self.__character_pos[0] * self.__cs, self.__cs, self.__cs)
+        self.__canvas.stroke_rect(self.__character_pos[1] * self.__cs, self.__character_pos[0] * self.__cs, self.__cs, self.__cs)
+        self.__character_pos = [self.__character_pos[0], self.__character_pos[1]]
 
     def animation(self, x: int, y: int):
         if self.__grid[x][y] == 3:

@@ -236,13 +236,13 @@ class ActiveAgentQLearning:
                 current_trials += 1
         print("learning completed")
 
-    def play(self):
+    def play(self, mode="computed"):
         s0 = self.__env.reset()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
-            self.__env.render()
+            self.__env.render(mode)
             time.sleep(1)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
@@ -353,13 +353,13 @@ class ActiveAgentRegressionLearning:
                 current_trials += 1
         print("learning completed")
 
-    def play(self):
+    def play(self, mode="computed"):
         s0 = self.__env.reset()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
-            self.__env.render()
+            self.__env.render(mode)
             time.sleep(1)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
