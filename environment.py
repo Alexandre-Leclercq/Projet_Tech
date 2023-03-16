@@ -103,7 +103,7 @@ class SimpleMaze(Environment):
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
             for i in torch.arange(self.__row):
-                print("{:<2}".format(str(i)), end=" ")
+                print("{:<2}".format(str(i.item())), end=" ")
                 for j in torch.arange(self.__col):
                     print("|", end="")
                     if self.character_pos == [i, j]:
@@ -203,17 +203,22 @@ class Maze(Environment):  # Maze environment base on the depth first search algo
         elif mode == "human":
             print("human")
 
-    def step(self, action):
-        """ needs to be implemented """
-        pass
+    def step(self, action: int) -> (list, int, bool):
+        movement = self.ACTIONS[action]
+        if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
+            self.character_pos[0] += movement[0]
+            self.character_pos[1] += movement[1]
+        return self.state(), self.reward(), self.done()
 
-    def state(self):
-        """ needs to be implemented """
-        pass
+    def state(self) -> int:
+        return self.character_pos.copy()
 
-    def reward(self):
-        """ needs to be implemented """
-        pass
+    def reward(self) -> float:
+        if self.character_pos == self.end_point:
+            return 1000
+        else:
+            return -1
+
 
 
 def main():
