@@ -285,8 +285,14 @@ class ActiveAgentRegressionLearning:
             u[i] = torch.max(self.__q_b(i))
         return u
 
-    def __s_tilde(self, s):
-        return torch.hstack((torch.tensor(1, dtype=torch.float), torch.tensor(s, dtype=torch.float)))
+    def __rand_argmax(self, tensor):
+        max_inds, = torch.where(tensor == tensor.max())
+        random_index = random.randint(0, len(max_inds)-1)
+        return max_inds[random_index]
+
+    def __s_tilde(self, s: list):
+        return torch.tensor(([1] + s), dtype=torch.float)
+
     def __q_b(self, s: list, a=None):
         if a is None:  # calculate the vector [Q_b[s0], ... Q_b[sn]]
             return torch.matmul(self.__beta, self.__s_tilde(s))
@@ -303,18 +309,21 @@ class ActiveAgentRegressionLearning:
         if self.__s is not None:
             s_index = self.__state_index.index(self.__s)
             self.__Nsa[s_index][self.__a] += 1
-            print("alpha: "+str(self.__alpha(self.__Nsa[s_index][self.__a])))
-            print("variation: "+str(self.__alpha(self.__Nsa[s_index][self.__a]) \
-                                    * \
+            print("s': "+str(s_prime))
+            print("variation: "+str(
                                     (self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a)) \
                                     * self.__s_tilde(self.__s)))
+            print("max Q_b[s']: "+str(torch.max(self.__q_b(s_prime))))
+            print("Q_b[s][a]"+str(self.__q_b(self.__s, self.__a)))
             self.__beta[self.__a] += self.__alpha(self.__Nsa[s_index][self.__a]) \
                                      * \
                                      (self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a)) \
                                      * self.__s_tilde(self.__s)
+        print("Q[s']: "+str(self.function_exploration(self.__q_b(s_prime), self.__Nsa[s_prime_index])))
+        self.__a = self.__rand_argmax(self.function_exploration(self.__q_b(s_prime), self.__Nsa[s_prime_index]))
 
         self.__s = s_prime
-        self.__a = torch.argmax(self.__q_b(s_prime))
+
         self.__r = reward_prime
 
         return self.__env.actions()[self.__a]
@@ -325,22 +334,21 @@ class ActiveAgentRegressionLearning:
         self.__a = None
         self.__r = None
         self.__state_index: list = []
-        self.__beta = torch.rand((len(self.ACTIONS), len(s0)+1),)*1000
+        self.__beta = torch.zeros((len(self.ACTIONS), len(s0)+1),)
         self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def learning(self, trials: int):
         current_trials: int = 0
         s0 = self.__env.reset()
         self.__reset(trials, s0)
-        print("s0: "+str(s0))
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
             action = self.q_learning_agent(s_prime, reward, done_stage)
-
+            time.sleep(.1)
             if done_stage:
                 self.__s = None
-                s0 = torch.tensor(self.__env.reset(), dtype=torch.float)
+                s0 = self.__env.reset()
                 action = self.q_learning_agent(s0, self.__env.reward(), False)
                 current_trials += 1
         print("learning completed")
@@ -366,7 +374,7 @@ class ActiveAgentRegressionLearning:
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
             self.__env.render()
-            time.sleep(1)
+            time.sleep(.1)
             action = self.q_learning_agent(s_prime, reward, done_stage)
             if done_stage:
                 break

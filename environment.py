@@ -92,7 +92,6 @@ class SimpleMaze(Environment):
     def step(self, action: int) -> (list, int, bool):
         movement = self.ACTIONS[action]
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
-            print("ok1")
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
         return self.state(), self.reward(), self.done()
