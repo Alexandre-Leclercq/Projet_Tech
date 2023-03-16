@@ -1,5 +1,7 @@
 import torch
 import random
+import time
+import os
 from typing import Optional
 from environment import SimpleMaze
 
@@ -216,25 +218,31 @@ class ActiveAgentQLearning:
     def learning(self, trials: int):
         current_trials: int = 0
         self.__reset(trials)
-        self.__env.reset()
-        s0 = self.__env.state()
+        s0 = self.__env.reset()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
-            s_prime = self.__env.state()
             action = self.q_learning_agent(s_prime, reward, done_stage)
             if self.__debug:
                 self.__debug_env()
 
             if done_stage:
                 self.__s = None
-                self.__env.reset()
-                s0 = self.__env.state()
+                s0 = self.__env.reset()
                 action = self.q_learning_agent(s0, self.__env.reward(), False)
                 current_trials += 1
         print("learning completed")
 
-
+    def play(self):
+        s0 = self.__env.reset()
+        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        while True:
+            s_prime, reward, done_stage = self.__env.step(action)
+            self.__env.render()
+            time.sleep(1)
+            action = self.q_learning_agent(s_prime, reward, done_stage)
+            if done_stage:
+                break
 class ActiveAgentRegressionLearning:
 
     ACTIONS: tuple = (
@@ -254,11 +262,12 @@ class ActiveAgentRegressionLearning:
         self.__q_min = q_min
         self.__trials = 0
         self.__gamma = gamma
-        self.__beta = torch.rand((len(self.__env.actions()), self.__env.get_state_dim()+1),)*1000  # we generate random beta between 0 and 1000 (max reward)
-        self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
+        self.__state_index: list = []
+        self.__beta = torch.tensor([], dtype=torch.float)
+        self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def __alpha(self, n: int) -> float:
-        return (self.__trials/10) / (self.__trials/10 + n)
+        return (self.__trials) / (self.__trials + n)
 
     def function_exploration(self, q, n: int):
         tmp = torch.zeros(len(q))
@@ -269,9 +278,6 @@ class ActiveAgentRegressionLearning:
                 tmp[i] = q[i]
         return tmp
 
-    def __debug_env(self):
-        self.__env.render()
-
     def get_utilities(self):
         number_states = self.__env.get_number_state()
         u = torch.zeros(number_states, dtype=torch.float)
@@ -279,50 +285,58 @@ class ActiveAgentRegressionLearning:
             u[i] = torch.max(self.__q_b(i))
         return u
 
-    def q_b(self, s, a=None):
-        if a is None:
-            result = torch.zeros(len(self.__env.actions()))
-            for i in torch.arange(len(self.__env.actions())):
-                result[i] = self.q_b(s, i)
-            return result
-        else:
-            return torch.matmul(torch.hstack((torch.tensor(1), s)), self.__beta[a])
+    def __s_tilde(self, s):
+        return torch.hstack((torch.tensor(1, dtype=torch.float), torch.tensor(s, dtype=torch.float)))
+    def __q_b(self, s: list, a=None):
+        if a is None:  # calculate the vector [Q_b[s0], ... Q_b[sn]]
+            return torch.matmul(self.__beta, self.__s_tilde(s))
+        else:  # calculate Q_b[s, a]
+            return torch.matmul(self.__beta[a], self.__s_tilde(s))
 
-    def q_learning_agent(self, s_prime, reward_prime: float, done: bool):
-        a_prime = torch.argmax(self.q_b(s_prime))
+    def q_learning_agent(self, s_prime: list, reward_prime: float, done: bool):
+        if s_prime not in self.__state_index:  # keep in memory the index associate to the state s_prime
+            self.__state_index.append(s_prime)
+            self.__Nsa = torch.cat((self.__Nsa, torch.zeros((1, len(self.__env.actions())))), 0)  # initialise Nsa[s']
+
+        s_prime_index = self.__state_index.index(s_prime)
+
         if self.__s is not None:
-            self.__Nsa[self.__env.convert_state_to_number(self.__s)][self.__a] += 1
-            self.__beta[self.__a] += self.__alpha(self.__Nsa[self.__env.convert_state_to_number(self.__s)][self.__a]) * \
-                                     (self.__r + self.__gamma * self.q_b(s_prime, a_prime) - self.q_b(self.__s, self.__a)) \
-                                     * torch.hstack((torch.tensor(1), self.__s))
+            s_index = self.__state_index.index(self.__s)
+            self.__Nsa[s_index][self.__a] += 1
+            print("alpha: "+str(self.__alpha(self.__Nsa[s_index][self.__a])))
+            print("variation: "+str(self.__alpha(self.__Nsa[s_index][self.__a]) \
+                                    * \
+                                    (self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a)) \
+                                    * self.__s_tilde(self.__s)))
+            self.__beta[self.__a] += self.__alpha(self.__Nsa[s_index][self.__a]) \
+                                     * \
+                                     (self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a)) \
+                                     * self.__s_tilde(self.__s)
 
         self.__s = s_prime
-        self.__a = torch.argmax(self.function_exploration(self.q_b(s_prime), self.__Nsa[self.__env.convert_state_to_number(s_prime)]))
+        self.__a = torch.argmax(self.__q_b(s_prime))
         self.__r = reward_prime
 
         return self.__env.actions()[self.__a]
 
-    def __reset(self, trials: int):
+    def __reset(self, trials: int, s0):
         self.__trials = trials
-
-    def learning(self, trials: int, dim_state_env: int):
-        current_trials: int = trials
-        s0 = torch.tensor(self.__env.reset(), dtype=torch.float)
-        self.__beta
         self.__s = None
         self.__a = None
         self.__r = None
-        self.__beta = torch.rand((len(self.__env.actions()), dim_state_env+1),)*1000  # we generate random beta between 0 and 1000 (max reward)
-        self.__Nsa = torch.zeros((self.__env.get_number_state(), len(self.__env.actions())), dtype=torch.int)
+        self.__state_index: list = []
+        self.__beta = torch.rand((len(self.ACTIONS), len(s0)+1),)*1000
+        self.__Nsa = torch.tensor([], dtype=torch.int)
 
-
+    def learning(self, trials: int):
+        current_trials: int = 0
+        s0 = self.__env.reset()
+        self.__reset(trials, s0)
+        print("s0: "+str(s0))
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
-            s_prime = torch.tensor(s_prime, dtype=torch.float)
             action = self.q_learning_agent(s_prime, reward, done_stage)
-            if self.__debug:
-                self.__debug_env()
 
             if done_stage:
                 self.__s = None
@@ -331,6 +345,31 @@ class ActiveAgentRegressionLearning:
                 current_trials += 1
         print("learning completed")
 
+    def play(self):
+        clear = lambda: os.system('cls')
+        s0 = self.__env.reset()
+        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        while self.__env.character_pos != self.__env.end_point:
+            s_prime, reward, done_stage = self.__env.step(action)
+            self.__env.render()
+            time.sleep(1)
+            clear()
+            action = self.q_learning_agent(s_prime, reward, done_stage)
+
+            if done_stage:
+                print("Partie terminée")
+                break
+
+    def play(self):
+        s0 = self.__env.reset()
+        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        while True:
+            s_prime, reward, done_stage = self.__env.step(action)
+            self.__env.render()
+            time.sleep(1)
+            action = self.q_learning_agent(s_prime, reward, done_stage)
+            if done_stage:
+                break
 
 def main():
     print("Hello World!")

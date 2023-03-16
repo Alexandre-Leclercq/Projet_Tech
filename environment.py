@@ -69,7 +69,7 @@ class SimpleMaze(Environment):
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
         self.character_pos: list = [self.__row - 1, 0]
-        return self.character_pos.copy()
+        return self.state()
 
     def done(self) -> bool:
         return self.character_pos == self.end_point
@@ -83,7 +83,7 @@ class SimpleMaze(Environment):
     """
     return the state as a unique integer
     """
-    def state(self) -> int:
+    def state(self) -> list:
         return self.character_pos.copy()
 
     def get_number_state(self):
@@ -92,6 +92,7 @@ class SimpleMaze(Environment):
     def step(self, action: int) -> (list, int, bool):
         movement = self.ACTIONS[action]
         if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
+            print("ok1")
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
         return self.state(), self.reward(), self.done()
@@ -99,7 +100,7 @@ class SimpleMaze(Environment):
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
             for i in torch.arange(self.__row):
-                print("{:<2}".format(str(i)), end=" ")
+                print("{:<2}".format(str(i.item())), end=" ")
                 for j in torch.arange(self.__col):
                     print("|", end="")
                     if self.character_pos == [i, j]:
