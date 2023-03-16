@@ -261,7 +261,7 @@ class Maze(Environment):
         self.__row = row
         self.__col = col
         self.__seed: int = seed
-        self.character_pos: list = [row - 1, 0]
+        self.character_pos: list = []
         self.end_point: tuple = []
         self.ratio_obstacles = ratio_obstacles
         self.grid = torch.tensor([])
@@ -279,6 +279,7 @@ class Maze(Environment):
         row, col = random.randint(1, self.__row-1), random.randint(1, self.__col-1)
         #row, col = self.__row - 1, 0
         self.character_pos: list = [row, col]
+        self.grid[row, col] = self.CELLS_TYPE['empty']
         self.generation_wall(row, col)
         self.generate_obstacle()
         return self.character_pos.copy()
@@ -411,7 +412,7 @@ class Maze(Environment):
                 print("|")
             print("")
         elif mode == "gui":  # futur gui render mode
-            self.canvasInterface.draw(self.grid, self.CELLS_TYPE, cell_size=96, end_pos=self.end_point, character_pos=self.character_pos)
+            self.canvasInterface.draw(self.grid, self.CELLS_TYPE, cell_size=48, end_pos=self.end_point, character_pos=self.character_pos)
 
 
 

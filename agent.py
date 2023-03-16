@@ -243,7 +243,7 @@ class ActiveAgentQLearning:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(1)
+            time.sleep(3)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
 
@@ -360,7 +360,7 @@ class ActiveAgentRegressionLearning:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(1)
+            time.sleep(3)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
 
