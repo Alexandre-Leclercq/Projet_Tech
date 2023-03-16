@@ -98,6 +98,7 @@ class CanvasInterface:
         self.__canvas.draw_image(path_sprite, self.__end_pos[1] * self.__cs, self.__end_pos[0] * self.__cs, self.__cs,
                                  self.__cs)
         self.__canvas.draw_image(chest_sprite, self.__end_pos[1] * self.__cs, self.__end_pos[0] * self.__cs, self.__cs, self.__cs)
+        self.__canvas.stroke_rect(self.__end_pos[1] * self.__cs, self.__end_pos[0] * self.__cs, self.__cs, self.__cs)
 
 
 def main():
