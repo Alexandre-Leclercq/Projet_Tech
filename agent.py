@@ -260,12 +260,21 @@ class ActiveAgentRegressionLearning:
         "west"
     )
 
-    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min: int, debug: bool = False):
+    def __init__(
+            self,
+            env: SimpleMaze,
+            gamma: int,
+            n_min: int,
+            q_min: int,
+            debug: bool = False,
+            polynomial_features_degree: int = 2
+    ):
         self.__debug: bool = debug
         self.__env = env
         self.__s = None
         self.__a = None
         self.__r = None
+        self.__polynomial_features_degree = polynomial_features_degree
         self.__n_min = n_min
         self.__q_min = q_min
         self.__trials = 0
@@ -276,6 +285,17 @@ class ActiveAgentRegressionLearning:
 
     def __alpha(self, n: int) -> float:
         return (self.__trials) / (self.__trials + n)
+
+    # x un vecteur de variable de taille 2
+    # n le degré du polynome
+    def generate_polynomial_features(self, x: list):
+        n = self.__polynomial_features_degree
+        if len(x) != 2:
+            raise Exception("erreur de dimension pour x")
+        features = x.copy()
+        for i in range(n+1):
+            features.append(x[0]**(n-i) * x[1]**i)
+        return features
 
     def function_exploration(self, q, n: int):
         tmp = torch.zeros(len(q))
@@ -342,30 +362,35 @@ class ActiveAgentRegressionLearning:
         self.__a = None
         self.__r = None
         self.__state_index: list = []
-        self.__beta = torch.zeros((len(self.ACTIONS), len(s0)+1),)
+        self.__beta = torch.rand((len(self.ACTIONS), len(s0)+1))
         self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def learning(self, trials: int):
         current_trials: int = 0
         s0 = self.__env.reset()
+        s0 = self.generate_polynomial_features(s0)
         self.__reset(trials, s0)
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
+            s_prime = self.generate_polynomial_features(s_prime)
             action = self.q_learning_agent(s_prime, reward, done_stage)
             time.sleep(.1)
             if done_stage:
                 self.__s = None
                 s0 = self.__env.reset()
+                self.generate_polynomial_features(s0)
                 action = self.q_learning_agent(s0, self.__env.reward(), False)
                 current_trials += 1
         print("learning completed")
 
     def play(self, mode="computed"):
         s0 = self.__env.reset()
+        s0 = self.generate_polynomial_features(s0)
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
+            s_prime = self.generate_polynomial_features(s_prime)
             clear_output(wait=False)
             self.__env.render(mode)
             time.sleep(1)
@@ -375,12 +400,3 @@ class ActiveAgentRegressionLearning:
             if done_stage:
                 print("Partie terminée")
                 break
-
-def main():
-    print("Hello World!")
-
-
-if __name__ == '__main__':
-    main()
-
-# %%
