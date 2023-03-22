@@ -1,7 +1,7 @@
 import torch
 import random
 import time
-import os
+from IPython.display import clear_output
 from typing import Optional
 from environment import SimpleMaze
 
@@ -20,7 +20,7 @@ class PassiveAgentTD:
             seed: Optional[int] = 0,
             random_policy: bool = False,
             debug: bool = False
-            ):
+    ):
         self.__debug: bool = debug
         self.__randomPolicy: bool = random_policy
         self.__env = env
@@ -35,8 +35,9 @@ class PassiveAgentTD:
     """
     see p.702 Artificial Intelligence: A modern approach 
     """
+
     def __alpha(self, n: int) -> float:
-        return (self.__trials/10) / (self.__trials/10 + n)
+        return (self.__trials / 10) / (self.__trials / 10 + n)
 
     def __update_utility(self, s_prime, reward: float) -> None:  # U[s] + alpha(Ns[s]) (R[s] + γU[s′] − U[s])
         if s_prime not in self.__tab_visited_state:
@@ -64,12 +65,12 @@ class PassiveAgentTD:
     def __random_policy(self, current_trial: int):
         rand = random.uniform(0, 1)
         right_policy = self.__policy()
-        if rand < (1 - (current_trial/self.__trials) * 0.75):  # when current_trial --> trials. p --> 0.25
+        if rand < (1 - (current_trial / self.__trials) * 0.75):  # when current_trial --> trials. p --> 0.25
             action = right_policy
         else:
             wrong_action: list = self.__env.actions()
             wrong_action.remove(right_policy)
-            wrong_action: str = wrong_action[random.randint(0, len(wrong_action)-1)]
+            wrong_action: str = wrong_action[random.randint(0, len(wrong_action) - 1)]
             action = wrong_action
         return action
 
@@ -136,7 +137,6 @@ class PassiveAgentTD:
 
 
 class ActiveAgentQLearning:
-
     ACTIONS: tuple = (
         "north",
         "east",
@@ -144,7 +144,7 @@ class ActiveAgentQLearning:
         "west"
     )
 
-    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min:int, debug: bool = False):
+    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min: int, debug: bool = False):
         self.__debug: bool = debug
         self.__env = env
         self.__s = None  # actual state
@@ -159,7 +159,7 @@ class ActiveAgentQLearning:
         self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def __alpha(self, n: int) -> float:
-        alpha = (self.__trials/10) / (self.__trials/10 + n)
+        alpha = (self.__trials / 10) / (self.__trials / 10 + n)
         return alpha
 
     def function_exploration(self, q, n: torch.tensor):
@@ -184,8 +184,10 @@ class ActiveAgentQLearning:
     def q_learning_agent(self, s_prime, reward_prime: float, done: bool):
         if s_prime not in self.__state_index:  # keep in memory the index associate to the state s_prime
             self.__state_index.append(s_prime)
-            self.__Q_table = torch.cat((self.__Q_table, torch.zeros((1, len(self.__env.actions())))), 0)  # we add the row for Q[s']
-            self.__Nsa = torch.cat((self.__Nsa, torch.zeros((1, len(self.__env.actions())))), 0)  # we add the row for Nsa[s']
+            self.__Q_table = torch.cat((self.__Q_table, torch.zeros((1, len(self.__env.actions())))),
+                                       0)  # we add the row for Q[s']
+            self.__Nsa = torch.cat((self.__Nsa, torch.zeros((1, len(self.__env.actions())))),
+                                   0)  # we add the row for Nsa[s']
 
         s_prime_index = self.__state_index.index(s_prime)
 
@@ -197,8 +199,9 @@ class ActiveAgentQLearning:
             s_index = self.__state_index.index(self.__s)
             self.__Nsa[s_index][self.__a] = self.__Nsa[s_index][self.__a] + 1
             self.__Q_table[s_index][self.__a] = self.__Q_table[s_index][self.__a] + \
-                                                 self.__alpha(self.__Nsa[s_index][self.__a]) * \
-                                                 (self.__r + self.__gamma * self.__Q_table[s_prime_index][a_prime]-self.__Q_table[s_index][self.__a])
+                                                self.__alpha(self.__Nsa[s_index][self.__a]) * \
+                                                (self.__r + self.__gamma * self.__Q_table[s_prime_index][a_prime] -
+                                                 self.__Q_table[s_index][self.__a])
 
         self.__s = s_prime
         self.__a = torch.argmax(self.function_exploration(self.__Q_table[s_prime_index], self.__Nsa[s_prime_index]))
@@ -233,18 +236,23 @@ class ActiveAgentQLearning:
                 current_trials += 1
         print("learning completed")
 
-    def play(self):
+    def play(self, mode="computed"):
         s0 = self.__env.reset()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
-            self.__env.render()
+            clear_output(wait=False)
+            self.__env.render(mode)
             time.sleep(1)
-            action = self.q_learning_agent(s_prime, reward, done_stage)
-            if done_stage:
-                break
-class ActiveAgentRegressionLearning:
 
+            action = self.q_learning_agent(s_prime, reward, done_stage)
+
+            if done_stage:
+                print("Partie terminée")
+                break
+
+
+class ActiveAgentRegressionLearning:
     ACTIONS: tuple = (
         "north",
         "east",
@@ -252,7 +260,7 @@ class ActiveAgentRegressionLearning:
         "west"
     )
 
-    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min:int, debug: bool = False):
+    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min: int, debug: bool = False):
         self.__debug: bool = debug
         self.__env = env
         self.__s = None
@@ -353,30 +361,19 @@ class ActiveAgentRegressionLearning:
                 current_trials += 1
         print("learning completed")
 
-    def play(self):
-        clear = lambda: os.system('cls')
-        s0 = self.__env.reset()
-        action = self.q_learning_agent(s0, self.__env.reward(), False)
-        while self.__env.character_pos != self.__env.end_point:
-            s_prime, reward, done_stage = self.__env.step(action)
-            self.__env.render()
-            time.sleep(1)
-            clear()
-            action = self.q_learning_agent(s_prime, reward, done_stage)
-
-            if done_stage:
-                print("Partie terminée")
-                break
-
-    def play(self):
+    def play(self, mode="computed"):
         s0 = self.__env.reset()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
-            self.__env.render()
-            time.sleep(.1)
+            clear_output(wait=False)
+            self.__env.render(mode)
+            time.sleep(1)
+
             action = self.q_learning_agent(s_prime, reward, done_stage)
+
             if done_stage:
+                print("Partie terminée")
                 break
 
 def main():
@@ -386,4 +383,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-#%%
+# %%
