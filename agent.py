@@ -114,14 +114,13 @@ class PassiveAgentTD:
 
     def learning(self, trials: int):
         self.__reset(trials)
-        current_trial: int = 0
+        current_trials: int = 0
 
         s0 = self.__env.reset()
         self.__update_utility(s0, 0)  # we add the utility of the s0 state
-
-        while current_trial < self.__trials:
+        while current_trials < self.__trials:
             if self.__randomPolicy:
-                action = self.__random_policy(current_trial)
+                action = self.__random_policy(current_trials)
             else:
                 action = self.__policy()
 
@@ -132,7 +131,7 @@ class PassiveAgentTD:
                 self.__s = self.__env.reset()
                 if self.__debug:
                     self.__debug_env()
-                current_trial += 1
+                current_trials += 1
         print("learning completed")
 
     def print_u_table(self):
@@ -244,6 +243,7 @@ class ActiveAgentQLearning:
         self.__reset(trials)
         s0 = self.__env.reset()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
+        printProgressBar(current_trials, self.__trials)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
             action = self.q_learning_agent(s_prime, reward, done_stage)
@@ -251,6 +251,7 @@ class ActiveAgentQLearning:
                 self.__debug_env()
 
             if done_stage:
+                printProgressBar(current_trials, self.__trials)
                 self.__s = None
                 s0 = self.__env.reset()
                 action = self.q_learning_agent(s0, self.__env.reward(), False)
@@ -344,12 +345,7 @@ class ActiveAgentRegressionLearning:
         return max_inds[random_index]
 
     def __q_b(self, s: torch.Tensor, a=None):
-        #if s == [0, 9, 0, 0, 81]:
-            #print(s)
-            #print(self.__beta)
         if a is None:  # calculate the vector [Q_b[s0], ... Q_b[sn]]
-            #print(self.__beta)
-            #print(s)
             return torch.matmul(self.__beta, s)
         else:  # calculate Q_b[s, a]
             return torch.matmul(self.__beta[a], s)
@@ -364,20 +360,10 @@ class ActiveAgentRegressionLearning:
         if len(self.__s) != 0:
             s_index = self.__state_index.index(self.__s.tolist())
             self.__Nsa[s_index][self.__a] += 1
-            #print("s': "+str(s_prime))
-            #print("reward: "+str(reward_prime))
-            #print("variation: "+str((self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a))))
-            #print("")
-            #print("max Q_b[s']: "+str(torch.max(self.__q_b(s_prime))))
-            #print("Q_b[s][a]"+str(self.__q_b(self.__s, self.__a)))
             self.__beta[self.__a] += self.__alpha(self.__Nsa[s_index][self.__a]) * \
                                      (self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a)) \
                                      * self.__s
-        #print("Q[s']: "+str(self.function_exploration(self.__q_b(s_prime), self.__Nsa[s_prime_index])))
-        #print("\n\n")
-        print("Qb[s'] = "+str(self.function_exploration(self.__q_b(s_prime), self.__Nsa[s_prime_index])))
         self.__a = self.__rand_argmax(self.function_exploration(self.__q_b(s_prime), self.__Nsa[s_prime_index]))
-        print("Qb[s', a] = "+str(self.__q_b(s_prime, self.__a)))
 
         self.__s = s_prime
 
@@ -401,24 +387,17 @@ class ActiveAgentRegressionLearning:
         self.__reset(trials, s0)
         action = self.q_learning_agent(s0, self.__env.reward())
         printProgressBar(current_trials, self.__trials)
-        nombre_coup = 0
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
             s_prime = self.generate_polynomial_normalize_features(s_prime)
             action = self.q_learning_agent(s_prime, reward)
-            #   time.sleep(.1)
-            nombre_coup += 1
             if done_stage:
-                print("\n\n")
-                print("iteration: "+str(current_trials))
-                print("nombre_coup: "+str(nombre_coup))
                 printProgressBar(current_trials, self.__trials)
                 self.__s = torch.tensor([])
                 s0 = self.__env.reset()
                 s0 = self.generate_polynomial_normalize_features(s0)
                 action = self.q_learning_agent(s0, self.__env.reward())
                 current_trials += 1
-                nombre_coup = 0
         print("learning completed")
 
     def play(self, mode="computed"):
