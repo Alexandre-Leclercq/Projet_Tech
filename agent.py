@@ -242,7 +242,7 @@ class ActiveAgentQLearning:
         current_trials: int = 0
         self.__reset(trials)
         s0 = self.__env.reset()
-        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        action = self.q_learning_agent(s0, 0, False)
         printProgressBar(current_trials, self.__trials)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
@@ -254,13 +254,13 @@ class ActiveAgentQLearning:
                 printProgressBar(current_trials, self.__trials)
                 self.__s = None
                 s0 = self.__env.reset()
-                action = self.q_learning_agent(s0, self.__env.reward(), False)
+                action = self.q_learning_agent(s0, 0, False)
                 current_trials += 1
         print("learning completed")
 
     def play(self, mode="computed"):
         s0 = self.__env.reset()
-        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        action = self.q_learning_agent(s0, 0, False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
@@ -385,7 +385,7 @@ class ActiveAgentRegressionLearning:
         s0 = self.__env.reset()
         s0 = self.generate_polynomial_normalize_features(s0)
         self.__reset(trials, s0)
-        action = self.q_learning_agent(s0, self.__env.reward())
+        action = self.q_learning_agent(s0, 0)
         printProgressBar(current_trials, self.__trials)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
@@ -396,14 +396,14 @@ class ActiveAgentRegressionLearning:
                 self.__s = torch.tensor([])
                 s0 = self.__env.reset()
                 s0 = self.generate_polynomial_normalize_features(s0)
-                action = self.q_learning_agent(s0, self.__env.reward())
+                action = self.q_learning_agent(s0, 0)
                 current_trials += 1
         print("learning completed")
 
     def play(self, mode="computed"):
         s0 = self.__env.reset()
         s0 = self.generate_polynomial_normalize_features(s0)
-        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        action = self.q_learning_agent(s0, 0, False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
             s_prime = self.generate_polynomial_normalize_features(s_prime)

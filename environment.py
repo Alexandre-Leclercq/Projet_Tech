@@ -73,7 +73,6 @@ class SimpleMaze(Environment):
         self.character_pos: list = [self.__row - 1, 0]
         return self.state()
 
-
     def done(self) -> bool:
         return self.character_pos == self.end_point
 
@@ -119,109 +118,6 @@ class SimpleMaze(Environment):
             print("human")
 
 
-class OldMaze(Environment):  # Maze environment base on the depth first search algorithm
-
-    ACTIONS: dict = {
-        "north": (-1, 0),
-        "east": (0, 1),
-        "south": (1, 0),
-        "west": (0, -1)
-    }
-
-    def __init__(self, row: int, col: int, seed: int = 0):
-        self.__row = row
-        self.__col = col
-        self.__seed: int = seed
-        self.paths: list = []
-        self.character_pos: list = []
-        self.end_point: list = []
-        self.reset(seed)
-
-    def reset(self, seed: Optional[int] = None) -> None:
-        self.__seed = (seed, self.__seed)[seed is None]
-        row, col = random.randint(1, self.__row-1), random.randint(1, self.__col-1)
-        self.character_pos = [row, col]  # we set the character at a random starting point
-        self.paths = [self.character_pos[:]]  # we set the starting point as an empty cell
-        self.generation(row, col)  # we recursively generate a maze
-        self.end_point = self.paths[random.randint(0, len(self.paths)-1)].copy()  # we take a random empty cell set it as the end point
-
-    def actions(self) -> list:
-        return list(self.ACTIONS.keys())
-
-    def generation(self, row: int, col: int) -> None:
-        random_directions = [1, 2, 3, 4]
-        random.shuffle(random_directions)
-        for random_direction in random_directions:
-            if random_direction == 1:  # up
-                if row - 2 <= 0:
-                    continue
-                if [row - 1, col] not in self.paths and [row - 2, col] not in self.paths:
-                    self.paths.append([row - 1, col])
-                    self.paths.append([row - 2, col])
-                    self.generation(row - 2, col)
-                continue
-            if random_direction == 2:  # down
-                if row + 2 >= self.__row - 1:
-                    continue
-                if [row + 1, col] not in self.paths and [row + 2, col] not in self.paths:
-                    self.paths.append([row + 1, col])
-                    self.paths.append([row + 2, col])
-                    self.generation(row + 2, col)
-                continue
-            if random_direction == 3:  # left
-                if col - 2 <= 0:
-                    continue
-                if [row, col - 1] not in self.paths and [row, col - 2] not in self.paths:
-                    self.paths.append([row, col - 1])
-                    self.paths.append([row, col - 2])
-                    self.generation(row, col - 2)
-                continue
-            if random_direction == 4:  # right
-                if col + 2 >= self.__col - 1:
-                    continue
-                if [row, col + 1] not in self.paths and [row, col + 2] not in self.paths:
-                    self.paths.append([row, col + 1])
-                    self.paths.append([row, col + 2])
-                    self.generation(row, col + 2)
-
-    def get_number_state(self):
-        return self.__row * self.__col
-
-    def render(self, mode: str = "computed") -> None:
-        if mode == "computed":
-            for i in torch.arange(self.__row):
-                for j in torch.arange(self.__col):
-                    if self.character_pos == [i, j]:
-                        print("S", end="")
-                    elif self.end_point == [i, j]:
-                        print("E", end="")
-                    elif [i, j] in self.paths:
-                        print(".", end="")
-                    else:
-                        print("#", end="")
-
-                print()
-        elif mode == "human":
-            print("human")
-
-    def step(self, action: int) -> (list, int, bool):
-        movement = self.ACTIONS[action]
-        if self.__row > self.character_pos[0] + movement[0] >= 0 and self.__col > self.character_pos[1] + movement[1] >= 0:
-            self.character_pos[0] += movement[0]
-            self.character_pos[1] += movement[1]
-        return self.state(), self.reward(), self.done()
-
-    def state(self) -> int:
-        return self.character_pos.copy()
-
-    def reward(self) -> float:
-        if self.character_pos == self.end_point:
-            return 1000
-        else:
-            return -1
-
-
-
 def main():
     # création du plateau
     board = SimpleMaze(10, 10, 3)
@@ -255,8 +151,6 @@ class Maze(Environment):
         "coin": 2
     }
 
-
-
     def __init__(self, row: int, col: int, seed: int = 0, ratio_obstacles: int = 0,ratio_hole: int=0):
         self.__row = row
         self.__col = col
@@ -272,13 +166,11 @@ class Maze(Environment):
     def actions(self) -> list:
         return list(self.ACTIONS.keys())
 
-
     def reset(self, seed: Optional[int] = None) -> list:
         self.__seed = (seed, self.__seed)[seed is None]
         random.seed(self.__seed)
-        self.grid = torch.ones((self.__row,self.__col), dtype=torch.int) * self.CELLS_TYPE['wall']
+        self.grid = torch.ones((self.__row, self.__col), dtype=torch.int) * self.CELLS_TYPE['wall']
         row, col = random.randint(1, self.__row-1), random.randint(1, self.__col-1)
-        #row, col = self.__row - 1, 0
         self.character_pos: list = [row, col]
         self.grid[row, col] = self.CELLS_TYPE['empty']
         self.generation_wall(row, col)
@@ -370,20 +262,19 @@ class Maze(Environment):
                 row, col = wall_place.pop()
                 self.grid[row][col] = self.CELLS_TYPE['empty']
 
-
     def done(self) -> bool:
         return self.character_pos == self.end_point
 
-    def reward(self) -> float:
+    def reward(self, old_position: list) -> float:
         if self.character_pos == self.end_point:
             return 1000
-
-        if self.grid[self.character_pos[0], self.character_pos[1]] == 1:
-            return -200
-
-        if self.grid[self.character_pos[0], self.character_pos[1]] == 2:
+        elif old_position == self.character_pos:
+            return -50
+        elif self.grid[self.character_pos[0], self.character_pos[1]] == 1:
+            return -10
+        elif self.grid[self.character_pos[0], self.character_pos[1]] == 2:
             self.grid[self.character_pos[0], self.character_pos[1]] = 0
-            return 200
+            return 50
         else:
             return -1
 
@@ -399,12 +290,13 @@ class Maze(Environment):
 
     def step(self, action: int) -> (list, int, bool):
         movement = self.ACTIONS[action]
+        old_position = self.character_pos.copy()
         if self.__row > self.character_pos[0] + movement[0] >= 0 and \
                 self.__col > self.character_pos[1] + movement[1] >= 0 and\
                 self.grid[self.character_pos[0]+movement[0], self.character_pos[1]+movement[1]] != self.CELLS_TYPE['wall']:
             self.character_pos[0] += movement[0]
             self.character_pos[1] += movement[1]
-        return self.state(), self.reward(), self.done()
+        return self.state(), self.reward(old_position), self.done()
 
     def render(self, mode: str = "computed") -> None:
         if mode == "computed":
