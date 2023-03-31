@@ -243,7 +243,7 @@ class ActiveAgentQLearning:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(3)
+            time.sleep(1)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
 
@@ -333,7 +333,7 @@ class ActiveAgentRegressionLearning:
         self.__a = None
         self.__r = None
         self.__state_index: list = []
-        self.__beta = torch.rand((len(self.ACTIONS), len(s0)+1),)*1000
+        self.__beta = torch.rand((len(self.ACTIONS), len(s0)+1),)*500
         self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def learning(self, trials: int):
@@ -360,7 +360,7 @@ class ActiveAgentRegressionLearning:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(3)
+            time.sleep(1)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
 

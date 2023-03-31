@@ -257,13 +257,14 @@ class Maze(Environment):
 
 
 
-    def __init__(self, row: int, col: int, seed: int = 0, ratio_obstacles: int = 0):
+    def __init__(self, row: int, col: int, seed: int = 0, ratio_obstacles: int = 0,ratio_hole: int=0):
         self.__row = row
         self.__col = col
         self.__seed: int = seed
         self.character_pos: list = []
         self.end_point: tuple = []
         self.ratio_obstacles = ratio_obstacles
+        self.ratio_hole = ratio_hole
         self.grid = torch.tensor([])
         self.canvasInterface = CanvasInterface()
         self.reset(seed)
@@ -281,7 +282,8 @@ class Maze(Environment):
         self.character_pos: list = [row, col]
         self.grid[row, col] = self.CELLS_TYPE['empty']
         self.generation_wall(row, col)
-        self.generate_obstacle()
+        self.generate_hole()
+        self.generate_element()
         return self.character_pos.copy()
 
     def generation_wall(self, row: int, col: int) -> None:
@@ -318,11 +320,10 @@ class Maze(Environment):
                 if self.grid[row][col + 1] != self.CELLS_TYPE['empty'] and self.grid[row][col + 2] != self.CELLS_TYPE['empty']:
                     self.grid[row][col + 1] = self.CELLS_TYPE['empty']
                     self.grid[row][col + 2] = self.CELLS_TYPE['empty']
-
                     self.generation_wall(row, col + 2)
         self.end_point = [row, col]
 
-    def generate_obstacle(self):
+    def generate_element(self):
         free_place = []
 
         for i in torch.arange(self.__row):
@@ -332,8 +333,7 @@ class Maze(Environment):
                 if self.grid[i][j].item() == 0:
                     free_place.append([i.item(), j.item()])
 
-        place_obstacle = []
-        type_obstacle = []
+
         random.shuffle(free_place)  # ressort la liste mélanger
 
         for i in range(int((len(free_place))*self.ratio_obstacles)-1):  # on garde une place de libre pour le endpoint
@@ -346,13 +346,29 @@ class Maze(Environment):
                 row, col = free_place.pop()
                 self.grid[row][col] = self.CELLS_TYPE['coin']
 
-        # on ajoute le endpoint
+
         self.end_point = free_place.pop()
 
         """print('la boucle qui génère type obs',(int(len(free_place)/8)-1))
         print(len(type_obstacle))
         print('la boucle qui génère place obs',int(len(free_place)/8))
         print(len(place_obstacle))"""
+
+    def generate_hole(self):
+        wall_place = []
+
+        for i in torch.arange(self.__row):
+            for j in torch.arange(self.__col):
+                if [i, j] == self.character_pos:
+                    continue
+                if self.grid[i][j].item() == self.CELLS_TYPE['wall']:
+                    wall_place.append([i.item(), j.item()])
+
+        random.shuffle(wall_place)  # ressort la liste mélanger
+
+        for i in range(int((len(wall_place))*self.ratio_hole)): 
+                row, col = wall_place.pop()
+                self.grid[row][col] = self.CELLS_TYPE['empty']
 
 
     def done(self) -> bool:
@@ -370,7 +386,6 @@ class Maze(Environment):
             return 200
         else:
             return -1
-
 
 
     """
@@ -413,6 +428,71 @@ class Maze(Environment):
             print("")
         elif mode == "gui":  # futur gui render mode
             self.canvasInterface.draw(self.grid, self.CELLS_TYPE, cell_size=48, end_pos=self.end_point, character_pos=self.character_pos)
+
+
+class bourse(Environment):
+
+    Actions_possibles: dict = {
+        "BUY": 1,
+        "SELL": 2,
+        "HOLD":3
+    }
+    def __init__(self, m,maxturb, periode:int ):
+        self.bt = torch.tensor([])
+        self.__pt = m
+        self.__ht = torch.zeros((1,3))
+        self.tactuel = 0  #instant t
+        self.__rsi = 0
+        self.__cci =0
+        self.turb = 0
+        self.maxturb = maxturb
+
+
+
+    def reset(self):
+        self.calculRSI()
+        self.calculCCI()
+        self.calculTurb()
+
+    def step(self, repIA): #action c'est un char
+        ptb = self.pt[self.tactuel,:] * 0.1 # récup les derniers prix de la bourse on va lui appliquer une commission d'achat
+        pts = self.pt[self.tactuel] * 0.2 # récup les derniers prix de la bourse on va lui appliquer une commission de vente
+        ktb = repIA[0]
+        kts = repIA[1]
+        prix_total_achat = torch.matmul(ptb,ktb.float())
+        prix_total_vente = torch.matmul(pts,kts.float())
+        btfutur = self.bt[self.tactuel] + prix_total_vente - prix_total_achat
+        vente_possible = True
+        futur_H = self.ht[self.tactuel] - kts
+
+        for i in futur_H: # regarder aussi qu'on vends des actions qu'on possède
+            if i<0:
+                vente_possible = False
+
+        if btfutur > 0 and vente_possible : #si on a un budget suffisant
+            new_row = self.ht[self.tactuel] - kts +ktb
+            new_row = torch.zeros((1, 3)) + self.ht[self.tactuel] - kts + ktb
+            torch.cat((self.ht, new_row))
+            self.bt = torch.cat((self.bt,btfutur)) # on donne l'argent
+
+            #maj de la turbulence
+            #if de la turb dans le done
+
+            #state return bt,pt,ht
+
+            self.tactuel = self.tactuel+1
+        return self.state(), self.reward(), self.done()
+
+    def done(self):
+
+        if self.turb >= self.maxturb :
+            #on va devoir vendre tout
+            self.bt[self.tactuel] = self.bt[self.tactuel] + torch.sum(self.ht[self.tactuel]*self.pt[self.tactuel]* 0.2)
+
+
+
+    def reward(self): #trouver un meilleur système de récompense
+        return (self.bt[self.tactuel] - self.bt[self.tactuel-1] * 100)
 
 
 
