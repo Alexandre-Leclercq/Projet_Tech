@@ -6,6 +6,27 @@ from typing import Optional
 from environment import SimpleMaze
 
 
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total:
+        print()
+
 class PassiveAgentTD:
     ACTIONS: tuple = (
         "north",
@@ -93,14 +114,13 @@ class PassiveAgentTD:
 
     def learning(self, trials: int):
         self.__reset(trials)
-        current_trial: int = 0
+        current_trials: int = 0
 
         s0 = self.__env.reset()
         self.__update_utility(s0, 0)  # we add the utility of the s0 state
-
-        while current_trial < self.__trials:
+        while current_trials < self.__trials:
             if self.__randomPolicy:
-                action = self.__random_policy(current_trial)
+                action = self.__random_policy(current_trials)
             else:
                 action = self.__policy()
 
@@ -111,7 +131,7 @@ class PassiveAgentTD:
                 self.__s = self.__env.reset()
                 if self.__debug:
                     self.__debug_env()
-                current_trial += 1
+                current_trials += 1
         print("learning completed")
 
     def print_u_table(self):
@@ -223,6 +243,7 @@ class ActiveAgentQLearning:
         self.__reset(trials)
         s0 = self.__env.reset()
         action = self.q_learning_agent(s0, self.__env.reward(), False)
+        printProgressBar(current_trials, self.__trials)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
             action = self.q_learning_agent(s_prime, reward, done_stage)
@@ -230,6 +251,7 @@ class ActiveAgentQLearning:
                 self.__debug_env()
 
             if done_stage:
+                printProgressBar(current_trials, self.__trials)
                 self.__s = None
                 s0 = self.__env.reset()
                 action = self.q_learning_agent(s0, self.__env.reward(), False)
@@ -260,22 +282,46 @@ class ActiveAgentRegressionLearning:
         "west"
     )
 
-    def __init__(self, env: SimpleMaze, gamma: int, n_min: int, q_min: int, debug: bool = False):
+    def __init__(
+            self,
+            env: SimpleMaze,
+            gamma: int,
+            n_min: int,
+            q_min: int,
+            debug: bool = False,
+            polynomial_features_degree: int = 2
+    ):
         self.__debug: bool = debug
         self.__env = env
-        self.__s = None
+        self.__s = torch.tensor([])
         self.__a = None
         self.__r = None
+        self.__polynomial_features_degree = polynomial_features_degree
         self.__n_min = n_min
         self.__q_min = q_min
         self.__trials = 0
         self.__gamma = gamma
         self.__state_index: list = []
-        self.__beta = torch.tensor([], dtype=torch.float)
+        self.__beta = torch.tensor([], dtype=torch.double)
         self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def __alpha(self, n: int) -> float:
-        return (self.__trials) / (self.__trials + n)
+        return (self.__trials / 10) / (self.__trials / 10 + n)
+
+    # x un vecteur de variable de taille 2
+    # n le degré du polynome
+    def generate_polynomial_normalize_features(self, x: list, biais=True):
+        n = self.__polynomial_features_degree
+        if len(x) != 2:
+            raise Exception("erreur de dimension pour x")
+        features = x.copy()
+        for i in range(n+1):
+            features.append(x[0]**(n-i) * x[1]**i)
+        if sum(features) != 0:
+            features = [float(i)/sum(features) for i in features]
+        if biais:
+            features.insert(0, 1)
+        return torch.tensor(features, dtype=torch.double)
 
     def function_exploration(self, q, n: int):
         tmp = torch.zeros(len(q))
@@ -288,76 +334,79 @@ class ActiveAgentRegressionLearning:
 
     def get_utilities(self):
         number_states = self.__env.get_number_state()
-        u = torch.zeros(number_states, dtype=torch.float)
+        u = torch.zeros(number_states, dtype=torch.double)
         for i in range(number_states):
             u[i] = torch.max(self.__q_b(i))
         return u
 
-    def __s_tilde(self, s):
-        return torch.hstack((torch.tensor(1, dtype=torch.float), torch.tensor(s, dtype=torch.float)))
-    def __q_b(self, s: list, a=None):
-        if a is None:  # calculate the vector [Q_b[s0], ... Q_b[sn]]
-            return torch.matmul(self.__beta, self.__s_tilde(s))
-        else:  # calculate Q_b[s, a]
-            return torch.matmul(self.__beta[a], self.__s_tilde(s))
+    def __rand_argmax(self, tensor):
+        max_inds, = torch.where(tensor == tensor.max())
+        random_index = random.randint(0, len(max_inds)-1)
+        return max_inds[random_index]
 
-    def q_learning_agent(self, s_prime: list, reward_prime: float, done: bool):
-        if s_prime not in self.__state_index:  # keep in memory the index associate to the state s_prime
-            self.__state_index.append(s_prime)
+    def __q_b(self, s: torch.Tensor, a=None):
+        if a is None:  # calculate the vector [Q_b[s0], ... Q_b[sn]]
+            return torch.matmul(self.__beta, s)
+        else:  # calculate Q_b[s, a]
+            return torch.matmul(self.__beta[a], s)
+
+    def q_learning_agent(self, s_prime: torch.Tensor, reward_prime: float):
+        if s_prime.tolist() not in self.__state_index:  # keep in memory the index associate to the state s_prime
+            self.__state_index.append(s_prime.tolist())
             self.__Nsa = torch.cat((self.__Nsa, torch.zeros((1, len(self.__env.actions())))), 0)  # initialise Nsa[s']
 
-        s_prime_index = self.__state_index.index(s_prime)
+        s_prime_index = self.__state_index.index(s_prime.tolist())
 
-        if self.__s is not None:
-            s_index = self.__state_index.index(self.__s)
+        if len(self.__s) != 0:
+            s_index = self.__state_index.index(self.__s.tolist())
             self.__Nsa[s_index][self.__a] += 1
-            print("alpha: "+str(self.__alpha(self.__Nsa[s_index][self.__a])))
-            print("variation: "+str(self.__alpha(self.__Nsa[s_index][self.__a]) \
-                                    * \
-                                    (self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a)) \
-                                    * self.__s_tilde(self.__s)))
-            self.__beta[self.__a] += self.__alpha(self.__Nsa[s_index][self.__a]) \
-                                     * \
+            self.__beta[self.__a] += self.__alpha(self.__Nsa[s_index][self.__a]) * \
                                      (self.__r + self.__gamma * torch.max(self.__q_b(s_prime)) - self.__q_b(self.__s, self.__a)) \
-                                     * self.__s_tilde(self.__s)
+                                     * self.__s
+        self.__a = self.__rand_argmax(self.function_exploration(self.__q_b(s_prime), self.__Nsa[s_prime_index]))
 
         self.__s = s_prime
-        self.__a = torch.argmax(self.__q_b(s_prime))
+
         self.__r = reward_prime
 
         return self.__env.actions()[self.__a]
 
     def __reset(self, trials: int, s0):
         self.__trials = trials
-        self.__s = None
+        self.__s = torch.tensor([])
         self.__a = None
         self.__r = None
         self.__state_index: list = []
-        self.__beta = torch.rand((len(self.ACTIONS), len(s0)+1),)*500
+        self.__beta = torch.zeros((len(self.ACTIONS), len(s0)), dtype=torch.double)
         self.__Nsa = torch.tensor([], dtype=torch.int)
 
     def learning(self, trials: int):
         current_trials: int = 0
         s0 = self.__env.reset()
+        s0 = self.generate_polynomial_normalize_features(s0)
         self.__reset(trials, s0)
-        print("s0: "+str(s0))
-        action = self.q_learning_agent(s0, self.__env.reward(), False)
+        action = self.q_learning_agent(s0, self.__env.reward())
+        printProgressBar(current_trials, self.__trials)
         while current_trials < self.__trials:
             s_prime, reward, done_stage = self.__env.step(action)
-            action = self.q_learning_agent(s_prime, reward, done_stage)
-
+            s_prime = self.generate_polynomial_normalize_features(s_prime)
+            action = self.q_learning_agent(s_prime, reward)
             if done_stage:
-                self.__s = None
-                s0 = torch.tensor(self.__env.reset(), dtype=torch.float)
-                action = self.q_learning_agent(s0, self.__env.reward(), False)
+                printProgressBar(current_trials, self.__trials)
+                self.__s = torch.tensor([])
+                s0 = self.__env.reset()
+                s0 = self.generate_polynomial_normalize_features(s0)
+                action = self.q_learning_agent(s0, self.__env.reward())
                 current_trials += 1
         print("learning completed")
 
     def play(self, mode="computed"):
         s0 = self.__env.reset()
+        s0 = self.generate_polynomial_normalize_features(s0)
         action = self.q_learning_agent(s0, self.__env.reward(), False)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
+            s_prime = self.generate_polynomial_normalize_features(s_prime)
             clear_output(wait=False)
             self.__env.render(mode)
             time.sleep(1)
@@ -367,12 +416,3 @@ class ActiveAgentRegressionLearning:
             if done_stage:
                 print("Partie terminée")
                 break
-
-def main():
-    print("Hello World!")
-
-
-if __name__ == '__main__':
-    main()
-
-# %%
