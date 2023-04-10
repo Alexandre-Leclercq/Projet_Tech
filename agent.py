@@ -265,7 +265,7 @@ class ActiveAgentQLearning:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(1)
+            time.sleep(3)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
 
@@ -403,15 +403,15 @@ class ActiveAgentRegressionLearning:
     def play(self, mode="computed"):
         s0 = self.__env.reset()
         s0 = self.generate_polynomial_normalize_features(s0)
-        action = self.q_learning_agent(s0, 0, False)
+        action = self.q_learning_agent(s0, 0)
         while True:
             s_prime, reward, done_stage = self.__env.step(action)
             s_prime = self.generate_polynomial_normalize_features(s_prime)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(1)
+            time.sleep(3)
 
-            action = self.q_learning_agent(s_prime, reward, done_stage)
+            action = self.q_learning_agent(s_prime, reward)
 
             if done_stage:
                 print("Partie terminée")

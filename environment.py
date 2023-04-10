@@ -147,8 +147,8 @@ class Maze(Environment):
     }
 
     OBSTACLES_PROPORTION: dict = {
-        "spikes": 8,
-        "coin": 2
+        "spikes": 7,
+        "coin": 3
     }
 
     def __init__(self, row: int, col: int, seed: int = 0, ratio_obstacles: int = 0,ratio_hole: int=0):
@@ -174,6 +174,7 @@ class Maze(Environment):
         self.character_pos: list = [row, col]
         self.grid[row, col] = self.CELLS_TYPE['empty']
         self.generation_wall(row, col)
+        self.place_endpoint()
         self.generate_hole()
         self.generate_element()
         return self.character_pos.copy()
@@ -229,7 +230,7 @@ class Maze(Environment):
         random.shuffle(free_place)  # ressort la liste mélanger
 
         for i in range(int((len(free_place))*self.ratio_obstacles)-1):  # on garde une place de libre pour le endpoint
-            random_value = random.randint(1, self.__col-1)
+            random_value = random.randint(1, self.__col) #-1 si y faut
             if random_value <= self.OBSTACLES_PROPORTION['spikes']:
                 row, col = free_place.pop()
                 self.grid[row][col] = self.CELLS_TYPE['spikes']
@@ -239,6 +240,20 @@ class Maze(Environment):
                 self.grid[row][col] = self.CELLS_TYPE['coin']
 
 
+        #self.end_point = free_place.pop()
+
+    def place_endpoint(self):
+        free_place = []
+
+        for i in torch.arange(self.__row):
+            for j in torch.arange(self.__col):
+                if [i, j] == self.character_pos:
+                    continue
+                if self.grid[i][j].item() == 0:
+                    free_place.append([i.item(), j.item()])
+
+
+        random.shuffle(free_place)  # ressort la liste mélanger
         self.end_point = free_place.pop()
 
         """print('la boucle qui génère type obs',(int(len(free_place)/8)-1))
@@ -270,10 +285,10 @@ class Maze(Environment):
             return 1000
         elif old_position == self.character_pos:
             return -50
-        elif self.grid[self.character_pos[0], self.character_pos[1]] == 1:
+        elif self.grid[self.character_pos[0], self.character_pos[1]] == self.CELLS_TYPE['spikes']:
             return -10
-        elif self.grid[self.character_pos[0], self.character_pos[1]] == 2:
-            self.grid[self.character_pos[0], self.character_pos[1]] = 0
+        elif self.grid[self.character_pos[0], self.character_pos[1]] == self.CELLS_TYPE['coin']:
+            self.grid[self.character_pos[0], self.character_pos[1]] = self.CELLS_TYPE['empty']
             return 50
         else:
             return -1
@@ -333,7 +348,8 @@ class bourse(Environment):
         self.bt = torch.tensor([])
         self.__pt = m
         self.__ht = torch.zeros((1,3))
-        self.tactuel = 0  #instant t
+        self.tactuel = 0
+        self.__periode = periode
         self.__rsi = 0
         self.__cci =0
         self.turb = 0
