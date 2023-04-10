@@ -147,11 +147,12 @@ class Maze(Environment):
     }
 
     OBSTACLES_PROPORTION: dict = {
-        "spikes": 7,
-        "coin": 3
+        "spikes": 8,
+        "coin": 2
     }
 
-    def __init__(self, row: int, col: int, seed: int = 0, ratio_obstacles: int = 0,ratio_hole: int=0):
+    def __init__(self, row: int, col: int, seed: int = 0, ratio_obstacles: int = 0, ratio_hole: int = 0,
+                 cell_size: int = 48):        
         self.__row = row
         self.__col = col
         self.__seed: int = seed
@@ -160,7 +161,7 @@ class Maze(Environment):
         self.ratio_obstacles = ratio_obstacles
         self.ratio_hole = ratio_hole
         self.grid = torch.tensor([])
-        self.canvasInterface = CanvasInterface()
+        self.canvasInterface = CanvasInterface(self.__row, self.__col, cell_size)
         self.reset(seed)
 
     def actions(self) -> list:
@@ -286,10 +287,10 @@ class Maze(Environment):
         elif old_position == self.character_pos:
             return -50
         elif self.grid[self.character_pos[0], self.character_pos[1]] == self.CELLS_TYPE['spikes']:
-            return -10
+            return -100
         elif self.grid[self.character_pos[0], self.character_pos[1]] == self.CELLS_TYPE['coin']:
             self.grid[self.character_pos[0], self.character_pos[1]] = self.CELLS_TYPE['empty']
-            return 50
+            return 100
         else:
             return -1
 
@@ -334,8 +335,8 @@ class Maze(Environment):
                 print("|")
             print("")
         elif mode == "gui":  # futur gui render mode
-            self.canvasInterface.draw(self.grid, self.CELLS_TYPE, cell_size=48, end_pos=self.end_point, character_pos=self.character_pos)
-
+            self.canvasInterface.draw(self.grid, self.CELLS_TYPE, end_pos=self.end_point,
+                                      character_pos=self.character_pos)
 
 class bourse(Environment):
 

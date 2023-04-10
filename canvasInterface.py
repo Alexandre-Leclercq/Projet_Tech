@@ -28,15 +28,15 @@ coin_sprite = Image.from_file("Assets/coin.png")
 
 class CanvasInterface:
 
-    def __init__(self):
+    def __init__(self, row: int, col: int, cell_size: int):
         self.__grid: list = []
-        self.__row: int = 0
-        self.__col: int = 0
-        self.__cs: int = 0
+        self.__row: int = row
+        self.__col: int = col
+        self.__cs: int = cell_size
         self.__cell_types: dict = {}
         self.__character_pos: list = []
         self.__end_pos: list = []
-        self.__canvas: Canvas = None
+        self.__canvas: Canvas = Canvas(width=self.__col * self.__cs, height=self.__row * self.__cs)
 
     def print_canvas(self):
         display(self.__canvas)
@@ -53,8 +53,6 @@ class CanvasInterface:
         if self.__grid[i][j] == self.__cell_types["spikes"]:
             self.__canvas.draw_image(spikes_sprite, j * self.__cs, i * self.__cs, self.__cs, self.__cs)
         elif self.__grid[i][j] == self.__cell_types["coin"]:
-            self.__canvas.draw_image(path_sprite, j * self.__cs, i * self.__cs, self.__cs,
-                                     self.__cs)
             self.__canvas.draw_image(coin_sprite, j * self.__cs, i * self.__cs, self.__cs, self.__cs)
         elif self.__grid[i][j] == self.__cell_types["wall"]:
             self.__canvas.draw_image(wall_sprite, j * self.__cs, i * self.__cs, self.__cs,
@@ -64,36 +62,29 @@ class CanvasInterface:
                                      self.__cs)
         self.__canvas.stroke_rect(j * self.__cs, i * self.__cs, self.__cs, self.__cs)
 
-
-
-
-
-    def draw(self, grid: list, cell_types: dict, cell_size: int, end_pos: list, character_pos: list):
+    def draw(self, grid: list, cell_types: dict, end_pos: list, character_pos: list):
         self.__grid: list = grid
-        self.__row: int = len(grid)
-        self.__col: int = len(grid[0])
-        self.__cs: int = cell_size
         self.__cell_types: dict = cell_types
         self.__character_pos: list = character_pos
         self.__end_pos: list = end_pos
-        self.__canvas: Canvas = Canvas(width=self.__col * self.__cs, height=self.__row * self.__cs)
         self.draw_canvas()
 
-
-
     def draw_canvas(self):
-        #self.clear_canvas()
+        # self.clear_canvas()
         for i in range(self.__row):
             for j in range(self.__col):
+                if i == self.__end_pos[0] and j == self.__end_pos[1]:
+                    continue
                 self.draw_cell(i, j)
         self.draw_end_cell()
-        #self.animation(new_pos[0], new_pos[1])
+        # self.animation(new_pos[0], new_pos[1])
         self.draw_character()
-        self.print_canvas()
 
     def draw_character(self):
-        self.__canvas.draw_image(character_sprite, self.__character_pos[1] * self.__cs, self.__character_pos[0] * self.__cs, self.__cs, self.__cs)
-        self.__canvas.stroke_rect(self.__character_pos[1] * self.__cs, self.__character_pos[0] * self.__cs, self.__cs, self.__cs)
+        self.__canvas.draw_image(character_sprite, self.__character_pos[1] * self.__cs,
+                                 self.__character_pos[0] * self.__cs, self.__cs, self.__cs)
+        self.__canvas.stroke_rect(self.__character_pos[1] * self.__cs, self.__character_pos[0] * self.__cs, self.__cs,
+                                  self.__cs)
         self.__character_pos = [self.__character_pos[0], self.__character_pos[1]]
 
     def animation(self, x: int, y: int):
@@ -103,9 +94,8 @@ class CanvasInterface:
             self.__canvas.draw_image(path_sprite, y * self.__cs, x * self.__cs, self.__cs, self.__cs)
 
     def draw_end_cell(self):
-        self.__canvas.draw_image(path_sprite, self.__end_pos[1] * self.__cs, self.__end_pos[0] * self.__cs, self.__cs,
+        self.__canvas.draw_image(chest_sprite, self.__end_pos[1] * self.__cs, self.__end_pos[0] * self.__cs, self.__cs,
                                  self.__cs)
-        self.__canvas.draw_image(chest_sprite, self.__end_pos[1] * self.__cs, self.__end_pos[0] * self.__cs, self.__cs, self.__cs)
         self.__canvas.stroke_rect(self.__end_pos[1] * self.__cs, self.__end_pos[0] * self.__cs, self.__cs, self.__cs)
 
 
