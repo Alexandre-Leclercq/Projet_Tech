@@ -256,7 +256,7 @@ class ActiveAgentQLearning:
                 s0 = self.__env.reset()
                 action = self.q_learning_agent(s0, 0, False)
                 current_trials += 1
-        print("learning completed")
+        print("\nlearning completed")
 
     def play(self, mode="computed"):
         s0 = self.__env.reset()
@@ -265,7 +265,7 @@ class ActiveAgentQLearning:
             s_prime, reward, done_stage = self.__env.step(action)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(3)
+            time.sleep(0.8)
 
             action = self.q_learning_agent(s_prime, reward, done_stage)
 
@@ -398,7 +398,7 @@ class ActiveAgentRegressionLearning:
                 s0 = self.generate_polynomial_normalize_features(s0)
                 action = self.q_learning_agent(s0, 0)
                 current_trials += 1
-        print("learning completed")
+        print("\nlearning completed")
 
     def play(self, mode="computed"):
         s0 = self.__env.reset()
@@ -409,7 +409,7 @@ class ActiveAgentRegressionLearning:
             s_prime = self.generate_polynomial_normalize_features(s_prime)
             clear_output(wait=False)
             self.__env.render(mode)
-            time.sleep(3)
+            time.sleep(0.8)
 
             action = self.q_learning_agent(s_prime, reward)
 

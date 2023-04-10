@@ -56,12 +56,13 @@ class SimpleMaze(Environment):
         "west": (0, -1)
     }
 
-    def __init__(self, row: int, col: int, seed: int = 0):
+    def __init__(self, row: int, col: int, seed: int = 0, cell_size: int = 48):
         self.__row = row
         self.__col = col
         self.__seed: int = seed
         self.character_pos: list = [row - 1, 0]
         self.end_point: tuple = [0, col - 1]
+        self.canvasInterface = CanvasInterface(self.__row, self.__col, cell_size)
         #  self.reset(seed)
 
     def actions(self) -> list:
@@ -114,20 +115,9 @@ class SimpleMaze(Environment):
                         print(".", end="")
                 print("|")
             print("")
-        elif mode == "human":  # futur gui render mode
-            print("human")
-
-
-def main():
-    # création du plateau
-    board = SimpleMaze(10, 10, 3)
-
-    # Affichage du plateau
-    board.render()
-
-
-if __name__ == '__main__':
-    main()
+        elif mode == "gui":  # futur gui render mode
+            self.canvasInterface.draw(self.grid, self.CELLS_TYPE, end_pos=self.end_point,
+                                      character_pos=self.character_pos)
 
 #%%
 class Maze(Environment):
@@ -147,8 +137,8 @@ class Maze(Environment):
     }
 
     OBSTACLES_PROPORTION: dict = {
-        "spikes": 8,
-        "coin": 2
+        "spikes": 10,
+        "coin": 0
     }
 
     def __init__(self, row: int, col: int, seed: int = 0, ratio_obstacles: int = 0, ratio_hole: int = 0,
@@ -230,8 +220,8 @@ class Maze(Environment):
 
         random.shuffle(free_place)  # ressort la liste mélanger
 
-        for i in range(int((len(free_place))*self.ratio_obstacles)-1):  # on garde une place de libre pour le endpoint
-            random_value = random.randint(1, self.__col) #-1 si y faut
+        for i in range(int((len(free_place))*self.ratio_obstacles)-1):
+            random_value = random.randint(1, self.__col)
             if random_value <= self.OBSTACLES_PROPORTION['spikes']:
                 row, col = free_place.pop()
                 self.grid[row][col] = self.CELLS_TYPE['spikes']
@@ -240,27 +230,16 @@ class Maze(Environment):
                 row, col = free_place.pop()
                 self.grid[row][col] = self.CELLS_TYPE['coin']
 
-
-        #self.end_point = free_place.pop()
-
     def place_endpoint(self):
         free_place = []
-
         for i in torch.arange(self.__row):
             for j in torch.arange(self.__col):
                 if [i, j] == self.character_pos:
                     continue
                 if self.grid[i][j].item() == 0:
                     free_place.append([i.item(), j.item()])
-
-
         random.shuffle(free_place)  # ressort la liste mélanger
         self.end_point = free_place.pop()
-
-        """print('la boucle qui génère type obs',(int(len(free_place)/8)-1))
-        print(len(type_obstacle))
-        print('la boucle qui génère place obs',int(len(free_place)/8))
-        print(len(place_obstacle))"""
 
     def generate_hole(self):
         wall_place = []
@@ -285,12 +264,12 @@ class Maze(Environment):
         if self.character_pos == self.end_point:
             return 1000
         elif old_position == self.character_pos:
-            return -50
+            return -20
         elif self.grid[self.character_pos[0], self.character_pos[1]] == self.CELLS_TYPE['spikes']:
-            return -100
+            return -20
         elif self.grid[self.character_pos[0], self.character_pos[1]] == self.CELLS_TYPE['coin']:
-            self.grid[self.character_pos[0], self.character_pos[1]] = self.CELLS_TYPE['empty']
-            return 100
+            #self.grid[self.character_pos[0], self.character_pos[1]] = self.CELLS_TYPE['empty']
+            return 0
         else:
             return -1
 
@@ -338,14 +317,16 @@ class Maze(Environment):
             self.canvasInterface.draw(self.grid, self.CELLS_TYPE, end_pos=self.end_point,
                                       character_pos=self.character_pos)
 
-class bourse(Environment):
+
+class Bourse(Environment):
 
     Actions_possibles: dict = {
         "BUY": 1,
         "SELL": 2,
         "HOLD":3
     }
-    def __init__(self, m,maxturb, periode:int ):
+
+    def __init__(self, m,maxturb, periode:int):
         self.bt = torch.tensor([])
         self.__pt = m
         self.__ht = torch.zeros((1,3))
@@ -363,26 +344,26 @@ class bourse(Environment):
         self.calculCCI()
         self.calculTurb()
 
-    def step(self, repIA): #action c'est un char
-        ptb = self.pt[self.tactuel,:] * 0.1 # récup les derniers prix de la bourse on va lui appliquer une commission d'achat
-        pts = self.pt[self.tactuel] * 0.2 # récup les derniers prix de la bourse on va lui appliquer une commission de vente
+    def step(self, repIA):
+        ptb = self.pt[self.tactuel,:] * 0.1  # récup les derniers prix de la bourse on va lui appliquer une commission d'achat
+        pts = self.pt[self.tactuel] * 0.2  # récup les derniers prix de la bourse on va lui appliquer une commission de vente
         ktb = repIA[0]
         kts = repIA[1]
-        prix_total_achat = torch.matmul(ptb,ktb.float())
-        prix_total_vente = torch.matmul(pts,kts.float())
+        prix_total_achat = torch.matmul(ptb, ktb.float())
+        prix_total_vente = torch.matmul(pts, kts.float())
         btfutur = self.bt[self.tactuel] + prix_total_vente - prix_total_achat
         vente_possible = True
         futur_H = self.ht[self.tactuel] - kts
 
-        for i in futur_H: # regarder aussi qu'on vends des actions qu'on possède
-            if i<0:
+        for i in futur_H:  # regarder aussi que nous vendons des actions que nous possédons
+            if i < 0:
                 vente_possible = False
 
-        if btfutur > 0 and vente_possible : #si on a un budget suffisant
+        if btfutur > 0 and vente_possible :  # si on a un budget suffisant
             new_row = self.ht[self.tactuel] - kts +ktb
             new_row = torch.zeros((1, 3)) + self.ht[self.tactuel] - kts + ktb
             torch.cat((self.ht, new_row))
-            self.bt = torch.cat((self.bt,btfutur)) # on donne l'argent
+            self.bt = torch.cat((self.bt,btfutur))  # ajout de l'argent dans la matrix budget
 
             #maj de la turbulence
             #if de la turb dans le done
@@ -394,14 +375,12 @@ class bourse(Environment):
 
     def done(self):
 
-        if self.turb >= self.maxturb :
-            #on va devoir vendre tout
+        if self.turb >= self.maxturb:
+            # nous devons vendre toutes nos actions
             self.bt[self.tactuel] = self.bt[self.tactuel] + torch.sum(self.ht[self.tactuel]*self.pt[self.tactuel]* 0.2)
 
-
-
-    def reward(self): #trouver un meilleur système de récompense
-        return (self.bt[self.tactuel] - self.bt[self.tactuel-1] * 100)
+    def reward(self):
+        return self.bt[self.tactuel] - self.bt[self.tactuel-1] * 100
 
 
 
